@@ -216,6 +216,8 @@ function onUpdate()
 	end
 	
 	CombatTimer.frame:SetAlpha(alpha)
+	
+	if (left == 0) then left = 0 end
 		
 	CombatTimer.frame.text:SetText(string.format("%.1f", left))
 end
