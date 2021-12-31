@@ -186,7 +186,7 @@ local last_value = 0
 local last_tick = GetTime()
 
 function CombatTimer:ResetTimer()
-	endTime = GetTime() + 5
+	endTime = GetTime() + 5.5
 	self.frame:SetStatusBarColor(0.0, 1.0, 0.0, 1.0)
 end
 
@@ -217,7 +217,7 @@ function onUpdate()
 		left = remaining
 	end
 
-	local passed = 5 - left
+	local passed = 7 - left
 	
 	CombatTimer.frame:SetValue(passed)
 	CombatTimer.frame:SetStatusBarColor(1.0 * passed / 5, 1.0, 0.0, 1.0)
@@ -299,7 +299,7 @@ function CombatTimer:CreateDisplay()
 	self.frame:SetBackdropBorderColor(0, 0, 0, 1.0)
 	self.frame:SetScript("OnDragStart", OnDragStart)
 	self.frame:SetScript("OnDragStop", OnDragStop)
-	self.frame:SetMinMaxValues(0, 5)
+	self.frame:SetMinMaxValues(0, 7)
 	self.frame:SetValue(0)
 	
 	self.frame.text = self.frame:CreateFontString(nil)
