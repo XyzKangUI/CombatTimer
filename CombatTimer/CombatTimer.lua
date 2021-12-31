@@ -2,6 +2,8 @@ CombatTimer = LibStub("AceAddon-3.0"):NewAddon("CombatTimer", "AceConsole-3.0", 
 
 local instanceType
 local endTime
+local PowerTypeIndex
+local externalManaGainTimestamp = 0
 
 function CombatTimer:OnInitialize()
 	self.db = LibStub:GetLibrary("AceDB-3.0"):New("CombatTimerDB", self:GetDefaultConfig())
@@ -69,7 +71,9 @@ local eventRegistered = {
 	SPELL_MISSED = true,
 	SPELL_HEAL = true,
 	SPELL_CAST_SUCCESS = true,
-	SPELL_AURA_APPLIED = true
+	SPELL_AURA_APPLIED = true,
+	SPELL_PERIODIC_ENERGIZE = true,
+	SPELL_ENERGIZE = true
 --	SPELL_AURA_REMOVED = true -- do we really need to track when lets say dots fall off? Dispels trigger spell_cast_success
 }
 
@@ -99,6 +103,13 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		FirstEvent = true
 		return
 	end
+
+        if (eventType == "SPELL_PERIODIC_ENERGIZE" or eventType == "SPELL_ENERGIZE") then
+		if isDestPlayer then
+			externalManaGainTimestamp = GetTime()
+		end
+		return
+        end
 
 	--return if player heals or dispels out of combat friendly target
 	if (eventType == "SPELL_HEAL" or
@@ -159,7 +170,7 @@ function CombatTimer:StartTimer()
 end
 
 function CombatTimer:StopTimer()
---	self.frame:UnregisterEvent("UNIT_POWER_UPDATE")
+	self.frame:UnregisterEvent("UNIT_POWER_UPDATE")
 	self.frame:SetScript("OnUpdate", nil)
 	self.frame:SetValue(0)
 	self.frame:SetAlpha(1.0)
@@ -180,19 +191,24 @@ function CombatTimer:ResetTimer()
 end
 
 function onUpdate()
-	local currentEnergy = UnitPower("player", 3)
-	local maxEnergy = UnitPowerMax("player", 3)
+	local currentEnergy = UnitPower("player", PowerTypeIndex)
+	local maxEnergy = UnitPowerMax("player", PowerTypeIndex)
 	local now = GetTime()
 	local v = now - last_tick
 	local left = endTime - GetTime()
 	local remaining = 2.02 - v
 
-	if (((currentEnergy == last_value + 20 or 
-		currentEnergy == last_value + 21 or 
-		currentEnergy == last_value + 40 or 
-		currentEnergy == last_value + 41) and 
-		currentEnergy ~= maxEnergy) or (now >= last_tick + 2.02)) then
-    		last_tick = now
+	if PowerTypeIndex == Enum_PowerType_Energy then
+		if (((currentEnergy == last_value + 20 or currentEnergy == last_value + 21 or currentEnergy == last_value + 40 or currentEnergy == last_value + 41) and currentEnergy ~= maxEnergy) or (now >= last_tick + 2.02)) then
+    			last_tick = now
+		end
+	elseif PowerTypeIndex == Enum_PowerType_Mana then
+		local now = GetTime()
+		if ((currentEnergy > last_value) and not (now - externalManaGainTimestamp < 0.02)) or (now >= last_tick + 2.02) then
+			last_tick = now
+		else
+			externalManaGainTimestamp = 0
+		end
 	end
 
 	last_value = currentEnergy
@@ -216,7 +232,7 @@ function onUpdate()
 	end
 	
 	CombatTimer.frame:SetAlpha(alpha)
-	
+
 	if (left == 0) then left = 0 end
 		
 	CombatTimer.frame.text:SetText(string.format("%.1f", left))
