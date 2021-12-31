@@ -1,0 +1,15 @@
+## Interface: 20503
+## Title: CombatTimer
+## Notes: Displays a timer which shows the time until you leave the PvP combat if you don't participate in it
+## OptionalDeps: Ace3, LibSharedMedia-3.0
+## SavedVariables: CombatTimerDB
+
+## Author: stfx
+## Version: $Revision: 53 $
+
+
+libs.xml
+
+CombatTimer.lua
+CombatTimer_Quirks.lua
+options.lua
