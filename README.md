@@ -5,13 +5,13 @@ Displays a timer bar showing how long it will be till a player exits PvP combat.
 
 Configure via Interface->Addons->CombatTimer.
 
-# Note:
+# Notes:
 
-- Works best with rogues, because it syncs with energy ticks. Mana sync is still W.I.P.
-- Timer will reset when it drops below 1sec and there is still time remaining till energy tick.
+- Works best for Rogue (& Cat Druid) class due to accurate energy ticks.
+- The timer will re-sync - according to the remaining time of the next energy tick - when it has 1 second remaining.
 - If you have frequently used abilities that are causing problems, I suggest you look at the CombatTimer_Quirks.lua file and add your spell to the whitelist.
-- Works best with max rank spells at level 70
-- Frost trap effect will keep you permanent combat while standing on top of it. The timer will just refresh the timer until energy tick and not full ooc duration.
+- Works best with max rank spells at level 70.
+- Frost trap effect will keep you in combat while standing on top of it. The timer will just refresh the timer based on the energy tick remaining time and not the full duration.
 
 # Credits:
 
