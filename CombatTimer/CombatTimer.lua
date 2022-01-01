@@ -237,7 +237,7 @@ function onUpdate()
 		left = remaining
 	end
 	
-	if (left == 0) then left = 0 end
+	if (left <= 0) then left = 0 end
 
 	local passed = 5 - left
 	
