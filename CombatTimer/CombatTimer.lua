@@ -2,7 +2,6 @@ CombatTimer = LibStub("AceAddon-3.0"):NewAddon("CombatTimer", "AceConsole-3.0", 
 
 local instanceType
 local endTime
-local PowerTypeIndex = UnitPowerType("player")
 local externalManaGainTimestamp = 0
 
 function CombatTimer:OnInitialize()
@@ -170,7 +169,7 @@ function CombatTimer:StartTimer()
 end
 
 function CombatTimer:StopTimer()
-	self.frame:UnregisterEvent("UNIT_POWER_UPDATE")
+--	self.frame:UnregisterEvent("UNIT_POWER_UPDATE")
 	self.frame:SetScript("OnUpdate", nil)
 	self.frame:SetValue(0)
 	self.frame:SetAlpha(1.0)
@@ -182,65 +181,63 @@ function CombatTimer:StopTimer()
 	end
 end
 
-function CombatTimer:ResetTimer()
-	endTime = GetTime() + 5.5
-	self.frame:SetStatusBarColor(0.0, 1.0, 0.0, 1.0)
-end
-
 local last_value = 0
 local last_tick = GetTime()
 
+function CombatTimer:ResetTimer()
+	endTime = GetTime() + 5
+	self.frame:SetStatusBarColor(0.0, 1.0, 0.0, 1.0)
+end
+
+function debug(...)
+    local val
+   local text = "|cff0384fc" .. "DEBUG" .. "|r:"
+    for i = 1, select("#", ...) do
+        val = select(i, ...)
+        if (type(val) == 'boolean') then val = val and "true" or false end
+        text = text .. " " .. tostring(val)
+    end
+    DEFAULT_CHAT_FRAME:AddMessage(text)
+end
+
 function onUpdate()
-	local currentEnergy = UnitPower("player", Enum.PowerType.Energy)
-	local maxEnergy = UnitPowerMax("player", Enum.PowerType.Energy)
-	local currentMana = UnitPower("player", Enum.PowerType.Mana)
+	local currentEnergy = UnitPower("player", 3)
+	local maxEnergy = UnitPowerMax("player", 3)
+	local currentMana = UnitPower("player", 0)
+	local type = UnitPowerType("player")
 	local now = GetTime()
-	local v = now - last_tick -- time where tick is atm
+	local v = now - last_tick
 	local left = endTime - GetTime()
-	local remaining = 2.02 - v -- time remaining for tick to finish
-	local possibleTick = false
+	local remaining = 2.02 - v
 
-	if PowerTypeIndex == Enum.PowerType.Energy then
-		if ((currentEnergy == last_value + 20 or currentEnergy == last_value + 21 or currentEnergy == last_value + 40 or currentEnergy == last_value + 41) and currentEnergy ~= maxEnergy) then
-    			possibleTick = true
+	if type == 3 then
+		if (((currentEnergy == last_value + 20 or 
+			currentEnergy == last_value + 21 or 
+			currentEnergy == last_value + 40 or 
+			currentEnergy == last_value + 41) and 
+			currentEnergy ~= maxEnergy) or (now >= last_tick + 2.02)) then
+    			last_tick = now
+--		debug("im a rogue")
 		end
-	elseif PowerTypeIndex == Enum.PowerType.Mana then
-		if currentMana > last_value then
-			possibleTick = true
-		end
-
-		local now = GetTime()
+	last_value = currentEnergy
+	elseif type == 0 then
 		if now - externalManaGainTimestamp < 0.02 then
 			externalManaGainTimestamp = 0
-			possibleTick = false
+			return
+--		debug("external mana tick")
 		end
-	else
-            possibleTick = true
-        end
-
-	if now >= last_tick + 2.02 then
-		possibleTick = true
+		if (currentMana > last_value) or (now >= last_tick + 2.02) then
+			last_tick = now
+		end
+--		debug("i use mana")
+	last_value = currentMana
 	end
-
-	if possibleTick then
-		last_tick = now
-	end
-
-	last_value = currentEnergy
-
-	if (left < 1) and PowerTypeIndex == Enum.PowerType.Energy then
+	
+	if (left < 1) then
 		left = remaining
 	end
 
-	if (left <= 0.1) and PowerTypeIndex == Enum.PowerType.Mana then
-		left = left + remaining
-	end
-
-	if (left < 0) then
-		left = 0
-	end
-
-	local passed = 5.5 - left
+	local passed = 5 - left
 	
 	CombatTimer.frame:SetValue(passed)
 	CombatTimer.frame:SetStatusBarColor(1.0 * passed / 5, 1.0, 0.0, 1.0)
@@ -255,6 +252,8 @@ function onUpdate()
 	end
 	
 	CombatTimer.frame:SetAlpha(alpha)
+	
+	if (left == 0) then left = 0 end
 		
 	CombatTimer.frame.text:SetText(string.format("%.1f", left))
 end
@@ -320,7 +319,7 @@ function CombatTimer:CreateDisplay()
 	self.frame:SetBackdropBorderColor(0, 0, 0, 1.0)
 	self.frame:SetScript("OnDragStart", OnDragStart)
 	self.frame:SetScript("OnDragStop", OnDragStop)
-	self.frame:SetMinMaxValues(0, 7)
+	self.frame:SetMinMaxValues(0, 5)
 	self.frame:SetValue(0)
 	
 	self.frame.text = self.frame:CreateFontString(nil)
