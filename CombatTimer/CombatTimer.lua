@@ -236,6 +236,8 @@ function onUpdate()
 	if (left < 1) then
 		left = remaining
 	end
+	
+	if (left == 0) then left = 0 end
 
 	local passed = 5 - left
 	
@@ -252,8 +254,6 @@ function onUpdate()
 	end
 	
 	CombatTimer.frame:SetAlpha(alpha)
-	
-	if (left == 0) then left = 0 end
 		
 	CombatTimer.frame.text:SetText(string.format("%.1f", left))
 end
