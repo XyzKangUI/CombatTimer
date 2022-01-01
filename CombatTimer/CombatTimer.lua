@@ -2,7 +2,7 @@ CombatTimer = LibStub("AceAddon-3.0"):NewAddon("CombatTimer", "AceConsole-3.0", 
 
 local instanceType
 local endTime
-local PowerTypeIndex
+local PowerTypeIndex = UnitPowerType("player")
 local externalManaGainTimestamp = 0
 
 function CombatTimer:OnInitialize()
@@ -182,42 +182,65 @@ function CombatTimer:StopTimer()
 	end
 end
 
-local last_value = 0
-local last_tick = GetTime()
-
 function CombatTimer:ResetTimer()
 	endTime = GetTime() + 5.5
 	self.frame:SetStatusBarColor(0.0, 1.0, 0.0, 1.0)
 end
 
-function onUpdate()
-	local currentEnergy = UnitPower("player", PowerTypeIndex)
-	local maxEnergy = UnitPowerMax("player", PowerTypeIndex)
-	local now = GetTime()
-	local v = now - last_tick
-	local left = endTime - GetTime()
-	local remaining = 2.02 - v
+local last_value = 0
+local last_tick = GetTime()
 
-	if PowerTypeIndex == Enum_PowerType_Energy then
-		if (((currentEnergy == last_value + 20 or currentEnergy == last_value + 21 or currentEnergy == last_value + 40 or currentEnergy == last_value + 41) and currentEnergy ~= maxEnergy) or (now >= last_tick + 2.02)) then
-    			last_tick = now
+function onUpdate()
+	local currentEnergy = UnitPower("player", Enum.PowerType.Energy)
+	local maxEnergy = UnitPowerMax("player", Enum.PowerType.Energy)
+	local currentMana = UnitPower("player", Enum.PowerType.Mana)
+	local now = GetTime()
+	local v = now - last_tick -- time where tick is atm
+	local left = endTime - GetTime()
+	local remaining = 2.02 - v -- time remaining for tick to finish
+	local possibleTick = false
+
+	if PowerTypeIndex == Enum.PowerType.Energy then
+		if ((currentEnergy == last_value + 20 or currentEnergy == last_value + 21 or currentEnergy == last_value + 40 or currentEnergy == last_value + 41) and currentEnergy ~= maxEnergy) then
+    			possibleTick = true
 		end
-	elseif PowerTypeIndex == Enum_PowerType_Mana then
+	elseif PowerTypeIndex == Enum.PowerType.Mana then
+		if currentMana > last_value then
+			possibleTick = true
+		end
+
 		local now = GetTime()
-		if ((currentEnergy > last_value) and not (now - externalManaGainTimestamp < 0.02)) or (now >= last_tick + 2.02) then
-			last_tick = now
-		else
+		if now - externalManaGainTimestamp < 0.02 then
 			externalManaGainTimestamp = 0
+			possibleTick = false
 		end
+	else
+            possibleTick = true
+        end
+
+	if now >= last_tick + 2.02 then
+		possibleTick = true
+	end
+
+	if possibleTick then
+		last_tick = now
 	end
 
 	last_value = currentEnergy
-	
-	if (left < 1) then
+
+	if (left < 1) and PowerTypeIndex == Enum.PowerType.Energy then
 		left = remaining
 	end
 
-	local passed = 7 - left
+	if (left <= 0.1) and PowerTypeIndex == Enum.PowerType.Mana then
+		left = left + remaining
+	end
+
+	if (left < 0) then
+		left = 0
+	end
+
+	local passed = 5.5 - left
 	
 	CombatTimer.frame:SetValue(passed)
 	CombatTimer.frame:SetStatusBarColor(1.0 * passed / 5, 1.0, 0.0, 1.0)
@@ -232,8 +255,6 @@ function onUpdate()
 	end
 	
 	CombatTimer.frame:SetAlpha(alpha)
-
-	if (left == 0) then left = 0 end
 		
 	CombatTimer.frame.text:SetText(string.format("%.1f", left))
 end
