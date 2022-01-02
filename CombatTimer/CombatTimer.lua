@@ -211,6 +211,11 @@ function onUpdate()
 	local remaining = 2.02 - v
 
 	if type == 3 then
+		if now - externalManaGainTimestamp < 0.02 then
+			externalManaGainTimestamp = 0
+			return
+--			debug("external energy tick")
+		end
 		if (((currentEnergy == last_value + 20 or 
 			currentEnergy == last_value + 21 or 
 			currentEnergy == last_value + 40 or 
