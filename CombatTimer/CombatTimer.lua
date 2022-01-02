@@ -3,6 +3,7 @@ CombatTimer = LibStub("AceAddon-3.0"):NewAddon("CombatTimer", "AceConsole-3.0", 
 local instanceType
 local endTime
 local externalManaGainTimestamp = 0
+local FirstEvent
 
 function CombatTimer:OnInitialize()
 	self.db = LibStub:GetLibrary("AceDB-3.0"):New("CombatTimerDB", self:GetDefaultConfig())
@@ -56,6 +57,7 @@ end
 function CombatTimer:PLAYER_REGEN_ENABLED()
 	self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	self:StopTimer()
+	FirstEvent = false
 end
 
 local eventRegistered = {
