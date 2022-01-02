@@ -7,7 +7,7 @@ Configure via Interface->Addons->CombatTimer.
 
 # Notes:
 
-- Works best for Rogue (& Cat Druid) class due to accurate energy ticks.
+- Works best for Rogue class due to accurate energy ticks. It is not intended for rage classes.
 - The timer will re-sync - according to the remaining time of the next energy tick - when it has 1 second remaining.
 - If you have frequently used abilities that are causing problems, I suggest you look at the CombatTimer_Quirks.lua file and add your spell to the whitelist.
 - Works best with max rank spells at level 70.
