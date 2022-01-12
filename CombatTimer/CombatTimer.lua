@@ -4,6 +4,11 @@ local instanceType
 local endTime
 local externalManaGainTimestamp = 0
 local FirstEvent
+local dur = 2.02
+local durations = {[1] = dur, [2] = dur*2, [3] = dur*3, [4] = dur*4, [5] = dur*5}
+local expirationTime = {}
+local outOfCombatTime
+local oocTime
 
 function CombatTimer:OnInitialize()
 	self.db = LibStub:GetLibrary("AceDB-3.0"):New("CombatTimerDB", self:GetDefaultConfig())
@@ -55,6 +60,8 @@ function CombatTimer:PLAYER_REGEN_DISABLED()
 end
 
 function CombatTimer:PLAYER_REGEN_ENABLED()
+	local diff = GetTime() - outOfCombatTime
+--	debug("OOC", "difference", "GetTime() - estimated outOfCombatTime:", math.abs(diff))
 	self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	self:StopTimer()
 	FirstEvent = false
@@ -96,7 +103,7 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	local isDestFriend = CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_FRIENDLY_UNITS)
 
 	-- return if event dest or source is not player.
-	if (not isDestPlayer and not isSourcePlayer) then
+	if (not isDestPlayer and not isSourcePlayer and not isSourcePet) then
 		return
 	end
 
@@ -187,7 +194,7 @@ local last_value = 0
 local last_tick = GetTime()
 
 function CombatTimer:ResetTimer()
-	endTime = GetTime() + 5.5
+	endTime = GetTime()
 	self.frame:SetStatusBarColor(0.0, 1.0, 0.0, 1.0)
 end
 
@@ -208,61 +215,70 @@ function onUpdate()
 	local currentMana = UnitPower("player", 0)
 	local type = UnitPowerType("player")
 	local now = GetTime()
-	local v = now - last_tick
-	local left = endTime - GetTime()
-	local remaining = 2.02 - v
 
 	if type == 3 then
 		if now - externalManaGainTimestamp < 0.02 then
 			externalManaGainTimestamp = 0
 			return
---			debug("external energy tick")
 		end
 		if (((currentEnergy == last_value + 20 or 
 			currentEnergy == last_value + 21 or 
 			currentEnergy == last_value + 40 or 
 			currentEnergy == last_value + 41) and 
-			currentEnergy ~= maxEnergy) or (now >= last_tick + 2.02)) then
+			currentEnergy ~= maxEnergy) or (now >= last_tick + dur)) then
+  	  		expirationTime[1] = now + durations[1]
+	    		expirationTime[2] = now + durations[2]
+ 	   		expirationTime[3] = now + durations[3]
+	    		expirationTime[4] = now + durations[4]
+	    		expirationTime[5] = now + durations[5]
     			last_tick = now
---		debug("im a rogue")
 		end
 	last_value = currentEnergy
 	elseif type == 0 then
 		if now - externalManaGainTimestamp < 0.02 then
 			externalManaGainTimestamp = 0
 			return
---		debug("external mana tick")
 		end
-		if (currentMana > last_value) or (now >= last_tick + 2.02) then
+		if (currentMana > last_value) or (now >= last_tick + dur) then
+  	  		expirationTime[1] = now + durations[1]
+	    		expirationTime[2] = now + durations[2]
+ 	   		expirationTime[3] = now + durations[3]
+	    		expirationTime[4] = now + durations[4]
+	    		expirationTime[5] = now + durations[5]
 			last_tick = now
 		end
---		debug("i use mana")
 	last_value = currentMana
 	end
-	
-	if (left < 1) then
-		left = remaining
-	end
-	
-	if (left <= 0) then left = 0 end
 
-	local passed = 6 - left
+	if endTime and endTime <= now then
+		outOfCombatTime = endTime + 5
+		oocTime = outOfCombatTime - now
+		for _,v in ipairs(expirationTime) do
+			if v >= outOfCombatTime and math.abs(outOfCombatTime - v) <= dur then
+				outOfCombatTime = v
+				oocTime = v - now
+				break
+			end
+		end
+	end
+
+	local passed = oocTime
 	
 	CombatTimer.frame:SetValue(passed)
-	CombatTimer.frame:SetStatusBarColor(1.0 * passed / 5, 1.0, 0.0, 1.0)
-	
+	CombatTimer.frame:SetStatusBarColor(1.0 * (passed) / 5, 1.0, 0.0, 1.0)
+
 	local alpha 
-	if (left > CombatTimer.db.profile.fadeInStart) then
+	if (oocTime > CombatTimer.db.profile.fadeInStart) then
 		alpha = 0
-	elseif (left < CombatTimer.db.profile.fadeInEnd) then
+	elseif (oocTime < CombatTimer.db.profile.fadeInEnd) then
 		alpha = 1
 	else
-		alpha = 1 / (CombatTimer.db.profile.fadeInStart - CombatTimer.db.profile.fadeInEnd) * (CombatTimer.db.profile.fadeInStart - left)
+		alpha = 1 / (CombatTimer.db.profile.fadeInStart - CombatTimer.db.profile.fadeInEnd) * (CombatTimer.db.profile.fadeInStart - oocTime)
 	end
 	
 	CombatTimer.frame:SetAlpha(alpha)
 		
-	CombatTimer.frame.text:SetText(string.format("%.1f", left))
+	CombatTimer.frame.text:SetText(string.format("%.1f", oocTime >= 0 and oocTime or 0))
 end
 
 --see if we should enable CombatTimer in this zone
