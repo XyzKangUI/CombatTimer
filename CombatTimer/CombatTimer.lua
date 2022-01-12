@@ -60,7 +60,7 @@ function CombatTimer:PLAYER_REGEN_DISABLED()
 end
 
 function CombatTimer:PLAYER_REGEN_ENABLED()
-	local diff = GetTime() - outOfCombatTime
+--	local diff = GetTime() - outOfCombatTime
 --	debug("OOC", "difference", "GetTime() - estimated outOfCombatTime:", math.abs(diff))
 	self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	self:StopTimer()
