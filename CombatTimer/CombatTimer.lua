@@ -56,6 +56,7 @@ end
 
 function CombatTimer:PLAYER_REGEN_DISABLED()
 	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	self:RegisterEvent("UNIT_AURA")
 	self:StartTimer()
 end
 
@@ -63,6 +64,7 @@ function CombatTimer:PLAYER_REGEN_ENABLED()
 --	local diff = GetTime() - outOfCombatTime
 --	debug("OOC", "difference", "GetTime() - estimated outOfCombatTime:", math.abs(diff))
 	self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	self:UnregisterEvent("UNIT_AURA")
 	self:StopTimer()
 	FirstEvent = false
 end
@@ -89,11 +91,9 @@ local CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo;
 local COMBATLOG_FILTER_ME = COMBATLOG_FILTER_ME;
 local COMBATLOG_FILTER_FRIENDLY_UNITS = COMBATLOG_FILTER_FRIENDLY_UNITS;
 local COMBATLOG_FILTER_MY_PET = COMBATLOG_FILTER_MY_PET;
-local Yunit = "target", "focus", "party1", "party2", "party3", "party4", "pet", "mouseover"
-
 
 function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
-	local _, eventType, _, sourceGUID, _, sourceFlags, _, destGUID, _, destFlags, _, spellID, spellName = CombatLogGetCurrentEventInfo()
+	local _, eventType, _, sourceGUID, _, sourceFlags, _, destGUID, destName, destFlags, _, spellID = CombatLogGetCurrentEventInfo()
 	if not (eventRegistered[eventType]) then return end
 
 	local isDestPlayer = CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_ME)
@@ -123,7 +123,7 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	if (eventType == "SPELL_HEAL" or
 		eventType == "SPELL_AURA_APPLIED" or
 		eventType == "SPELL_CAST_SUCCESS") then
-		if (isSourcePlayer and isDestFriend and not UnitAffectingCombat(Yunit)) then
+		if (isSourcePlayer and isDestFriend and not UnitAffectingCombat("destName")) then
 			return
 		end
 	end
@@ -131,7 +131,6 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	--return if player only gets healed, dispelled or buffed by someone/self
 	if ((eventType == "SPELL_HEAL" or
 		eventType == "SPELL_AURA_APPLIED" or
---		eventType == "SPELL_AURA_REMOVED" or
 		eventType == "SPELL_CAST_SUCCESS") and (isDestPlayer and (isSourceFriend or isSourcePlayer))) then
 			return
 	end
@@ -150,7 +149,7 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	end
 
 	-- return if devour magic (max rank @ LvL70)
-	if (isSourcePet or isSourceFriend) and ((spellID == 27277 or spellID == 27279) and (isDestPlayer or (isDestFriend and not UnitAffectingCombat(Yunit)))) then
+	if (isSourcePet or isSourceFriend) and ((spellID == 27277 or spellID == 27279) and (isDestPlayer or (isDestFriend and not UnitAffectingCombat("destName")))) then
 		return
 	end
 
@@ -170,6 +169,12 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	self:ResetTimer()
 end
 
+function CombatTimer:UNIT_AURA()
+	if AuraUtil.FindAuraByName(GetSpellInfo(13810), "player") then
+		self:ResetTimer()
+	end
+end
+
 function CombatTimer:StartTimer()
 	self:ResetTimer()
 	self.frame:RegisterEvent("UNIT_POWER_UPDATE")
@@ -178,7 +183,7 @@ function CombatTimer:StartTimer()
 end
 
 function CombatTimer:StopTimer()
---	self.frame:UnregisterEvent("UNIT_POWER_UPDATE")
+	self.frame:UnregisterEvent("UNIT_POWER_UPDATE")
 	self.frame:SetScript("OnUpdate", nil)
 	self.frame:SetValue(0)
 	self.frame:SetAlpha(1.0)
