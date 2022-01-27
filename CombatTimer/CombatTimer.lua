@@ -57,6 +57,7 @@ end
 
 function CombatTimer:PLAYER_REGEN_DISABLED()
 	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	self:RegisterEvent("UNIT_AURA")
 	self:StartTimer()
 end
 
@@ -64,9 +65,9 @@ function CombatTimer:PLAYER_REGEN_ENABLED()
 --	local diff = GetTime() - outOfCombatTime
 --	debug("OOC", "difference", "GetTime() - estimated outOfCombatTime:", math.abs(diff))
 	self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	self:UnregisterEvent("UNIT_AURA")
 	self:StopTimer()
 	FirstEvent = false
-	FTE = false
 end
 
 local eventRegistered = {
@@ -83,8 +84,8 @@ local eventRegistered = {
 	SPELL_CAST_SUCCESS = true,
 	SPELL_AURA_APPLIED = true,
 	SPELL_PERIODIC_ENERGIZE = true,
-	SPELL_ENERGIZE = true,
-	SPELL_AURA_REMOVED = true
+	SPELL_ENERGIZE = true
+--	SPELL_AURA_REMOVED = true
 }
 
 local CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo;
@@ -146,10 +147,8 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	end
 
 	-- return on own buffs
-	if (eventType == "SPELL_AURA_APPLIED") then
-		if (isDestPlayer and isSourcePlayer) then
-			return
-		end 
+	if eventType == "SPELL_AURA_APPLIED" and isDestPlayer and isSourcePlayer then
+		return
 	end
 
 	if (eventType == "SPELL_CAST_SUCCESS") then
@@ -160,17 +159,6 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 
 	-- return if devour magic (max rank @ LvL70)
 	if (isSourcePet or isSourceFriend) and ((spellID == 27277 or spellID == 27279) and (isDestPlayer or (isDestFriend and not isInCombat(destGUID)))) then
-		return
-	end
-
-	if (eventType == "SPELL_AURA_APPLIED" and spellID == 13810) then
-		FTE = true
-	end
-
-	if eventType == "SPELL_AURA_REMOVED" then
-		if spellID == 13810 then
-			FTE = false
-		end
 		return
 	end
 
@@ -323,6 +311,16 @@ function CombatTimer:ZONE_CHANGED_NEW_AREA()
 	end
 	
 	instanceType = type
+	FTE = false
+	FirstEvent = false
+end
+
+function CombatTimer:UNIT_AURA()
+	if AuraUtil.FindAuraByName(GetSpellInfo(13810), "player", "HARMFUL") then
+		FTE = true
+	else
+		FTE = false
+	end
 end
 
 -- Dragging functions
