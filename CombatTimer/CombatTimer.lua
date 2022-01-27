@@ -4,6 +4,7 @@ local instanceType
 local endTime
 local externalManaGainTimestamp = 0
 local FirstEvent
+local FTE
 local dur = 2.02
 local durations = {[1] = dur, [2] = dur*2, [3] = dur*3, [4] = dur*4, [5] = dur*5}
 local expirationTime = {}
@@ -56,7 +57,6 @@ end
 
 function CombatTimer:PLAYER_REGEN_DISABLED()
 	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-	self:RegisterEvent("UNIT_AURA")
 	self:StartTimer()
 end
 
@@ -64,9 +64,9 @@ function CombatTimer:PLAYER_REGEN_ENABLED()
 --	local diff = GetTime() - outOfCombatTime
 --	debug("OOC", "difference", "GetTime() - estimated outOfCombatTime:", math.abs(diff))
 	self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-	self:UnregisterEvent("UNIT_AURA")
 	self:StopTimer()
 	FirstEvent = false
+	FTE = false
 end
 
 local eventRegistered = {
@@ -83,17 +83,27 @@ local eventRegistered = {
 	SPELL_CAST_SUCCESS = true,
 	SPELL_AURA_APPLIED = true,
 	SPELL_PERIODIC_ENERGIZE = true,
-	SPELL_ENERGIZE = true
---	SPELL_AURA_REMOVED = true -- do we really need to track when lets say dots fall off? Dispels trigger spell_cast_success
+	SPELL_ENERGIZE = true,
+	SPELL_AURA_REMOVED = true
 }
 
 local CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo;
 local COMBATLOG_FILTER_ME = COMBATLOG_FILTER_ME;
 local COMBATLOG_FILTER_FRIENDLY_UNITS = COMBATLOG_FILTER_FRIENDLY_UNITS;
 local COMBATLOG_FILTER_MY_PET = COMBATLOG_FILTER_MY_PET;
+local Unitids = { "target", "focus", "party1", "party2", "party3", "party4", "pet", "mouseover" }
+
+local function isInCombat(guid)
+	for _, unit in ipairs(Unitids) do
+		if UnitGUID(unit) == guid and UnifAffectingCombat(unit) then
+			return true
+		end
+	end
+	return false
+end
 
 function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
-	local _, eventType, _, sourceGUID, _, sourceFlags, _, destGUID, destName, destFlags, _, spellID = CombatLogGetCurrentEventInfo()
+	local _, eventType, _, sourceGUID, _, sourceFlags, _, destGUID, _, destFlags, _, spellID = CombatLogGetCurrentEventInfo()
 	if not (eventRegistered[eventType]) then return end
 
 	local isDestPlayer = CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_ME)
@@ -123,7 +133,7 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	if (eventType == "SPELL_HEAL" or
 		eventType == "SPELL_AURA_APPLIED" or
 		eventType == "SPELL_CAST_SUCCESS") then
-		if (isSourcePlayer and isDestFriend and not UnitAffectingCombat("destName")) then
+		if (isSourcePlayer and isDestFriend and not isInCombat(destGUID)) then
 			return
 		end
 	end
@@ -149,7 +159,18 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	end
 
 	-- return if devour magic (max rank @ LvL70)
-	if (isSourcePet or isSourceFriend) and ((spellID == 27277 or spellID == 27279) and (isDestPlayer or (isDestFriend and not UnitAffectingCombat("destName")))) then
+	if (isSourcePet or isSourceFriend) and ((spellID == 27277 or spellID == 27279) and (isDestPlayer or (isDestFriend and not isInCombat(destGUID)))) then
+		return
+	end
+
+	if (eventType == "SPELL_AURA_APPLIED" and spellID == 13810) then
+		FTE = true
+	end
+
+	if eventType == "SPELL_AURA_REMOVED" then
+		if spellID == 13810 then
+			FTE = false
+		end
 		return
 	end
 
@@ -169,16 +190,10 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	self:ResetTimer()
 end
 
-function CombatTimer:UNIT_AURA()
-	if AuraUtil.FindAuraByName(GetSpellInfo(13810), "player") then
-		self:ResetTimer()
-	end
-end
-
 function CombatTimer:StartTimer()
 	self:ResetTimer()
 	self.frame:RegisterEvent("UNIT_POWER_UPDATE")
-	self.frame:SetScript("OnUpdate", onUpdate)
+	self.frame:SetScript("OnUpdate", CombatTimer.onUpdate)
 	self.frame:Show()
 end
 
@@ -214,7 +229,7 @@ function debug(...)
     DEFAULT_CHAT_FRAME:AddMessage(text)
 end
 
-function onUpdate()
+function CombatTimer.onUpdate()
 	local currentEnergy = UnitPower("player", 3)
 	local maxEnergy = UnitPowerMax("player", 3)
 	local currentMana = UnitPower("player", 0)
@@ -284,6 +299,14 @@ function onUpdate()
 	CombatTimer.frame:SetAlpha(alpha)
 		
 	CombatTimer.frame.text:SetText(string.format("%.1f", oocTime >= 0 and oocTime or 0))
+
+	if FTE == true then
+		if AuraUtil.FindAuraByName(GetSpellInfo(13810), "player", "HARMFUL") then
+			CombatTimer:ResetTimer()
+		else
+			FTE = false
+		end
+	end
 end
 
 --see if we should enable CombatTimer in this zone
