@@ -10,6 +10,7 @@ local durations = {[1] = dur, [2] = dur*2, [3] = dur*3, [4] = dur*4, [5] = dur*5
 local expirationTime = {}
 local outOfCombatTime
 local oocTime
+local UnitAffectingCombat = UnitAffectingCombat
 
 function CombatTimer:OnInitialize()
 	self.db = LibStub:GetLibrary("AceDB-3.0"):New("CombatTimerDB", self:GetDefaultConfig())
@@ -96,7 +97,7 @@ local Unitids = { "target", "focus", "party1", "party2", "party3", "party4", "pe
 
 local function isInCombat(guid)
 	for _, unit in ipairs(Unitids) do
-		if UnitGUID(unit) == guid and UnifAffectingCombat(unit) then
+		if UnitGUID(unit) == guid and UnitAffectingCombat(unit) then
 			return true
 		end
 	end
