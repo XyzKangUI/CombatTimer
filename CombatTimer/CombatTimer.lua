@@ -11,6 +11,7 @@ local expirationTime = {}
 local outOfCombatTime
 local oocTime
 local UnitAffectingCombat = UnitAffectingCombat
+local UnitGUID = UnitGUID
 
 function CombatTimer:OnInitialize()
 	self.db = LibStub:GetLibrary("AceDB-3.0"):New("CombatTimerDB", self:GetDefaultConfig())
