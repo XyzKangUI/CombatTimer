@@ -4,9 +4,16 @@ function CombatTimer:GetDefaultConfig()
 			scale = 1.00,
 			width = 60,
 			texture = "Glaze",
-			fadeInStart = 5.5,
+			fadeInStart = 7,
 			fadeInEnd = 0,
+			hide = true,
 			inside = {["arena"] = true, ["none"] = true},
+			visual = {
+				r = 0.15,
+				g = 1.0,
+				b = 0.0,
+				a = 1.0,
+			}
 		},
 	}
 	
@@ -115,8 +122,15 @@ function CombatTimer:SetupOptions()
 				type = "toggle",
 				arg = "lock",
 			},
-			texture = {
+			color = {
 				order = 7,
+				name = "Color",
+				type = "color",
+				set = function(info, r, g, b, a) self:OnColorSet(r, g, b, a) end,
+				get = function(info) return self.db.profile.visual.r, self.db.profile.visual.g, self.db.profile.visual.b, self.db.profile.visual.a; end,
+			},
+			texture = {
+				order = 8,
 				type = "select",
 				name = "Texture",
 				values = self.media:List('statusbar'),
@@ -135,7 +149,7 @@ function CombatTimer:SetupOptions()
 				end,
 			},
 			inside = {
-				order = 8,
+				order = 9,
 				name = "Only enable inside",
 				values = enabledIn,
 				type = "multiselect",
@@ -143,10 +157,17 @@ function CombatTimer:SetupOptions()
 				set = toggleTableEntry,
 			},
 			resetPos = {
-				order = 9,
+				order = 10,
 				name = "Reset position",
 				type = "execute",
 				func = function() self.db.profile.position = nil; self:SetPosition(); end,
+			},
+			test = {
+				order = 11,
+				name = "Test",
+				desc = "Enable test mode. Re-enable Lock when done",
+				type = "execute",
+				func = function() self.db.profile.lock = nil self:TestMode() end,
 			},
 		}
 	}
@@ -155,4 +176,13 @@ function CombatTimer:SetupOptions()
 	LibStub("AceConfigDialog-3.0"):AddToBlizOptions("Combat Timer", "Combat Timer")
 	self:RegisterChatCommand("ctimer", slashHandler)
 	self:RegisterChatCommand("combattimer", slashHandler)
+end
+
+function CombatTimer:OnColorSet(r, g, b, a)
+	self.db.profile.visual.r = r;
+	self.db.profile.visual.g = g;
+	self.db.profile.visual.b = b;
+	self.db.profile.visual.a = a;
+
+	self:ResetTimer();
 end

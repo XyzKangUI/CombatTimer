@@ -57,6 +57,16 @@ function CombatTimer:Reload()
 	end
 end
 
+function CombatTimer:TestMode()
+--	if not CombatTimer.db.test then return end
+	
+	self.frame:Show()
+	self.frame.text:SetText("TEST")
+	self.frame:SetValue(7)
+	self.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
+	self.frame:SetStatusBarTexture(self.media:Fetch(self.media.MediaType.STATUSBAR, self.db.profile.texture))
+end
+
 function CombatTimer:PLAYER_REGEN_DISABLED()
 	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	self:RegisterEvent("UNIT_AURA")
@@ -205,10 +215,10 @@ local last_tick = GetTime()
 
 function CombatTimer:ResetTimer()
 	endTime = GetTime()
-	self.frame:SetStatusBarColor(0.0, 1.0, 0.0, 1.0)
+	self.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
 end
 
-function debug(...)
+local function debug(...)
     local val
    local text = "|cff0384fc" .. "DEBUG" .. "|r:"
     for i = 1, select("#", ...) do
@@ -275,7 +285,7 @@ function CombatTimer.onUpdate()
 	local passed = oocTime
 	
 	CombatTimer.frame:SetValue(passed)
-	CombatTimer.frame:SetStatusBarColor(1.0 * (passed) / 5, 1.0, 0.0, 1.0)
+	CombatTimer.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
 
 	local alpha 
 	if (oocTime > CombatTimer.db.profile.fadeInStart) then
