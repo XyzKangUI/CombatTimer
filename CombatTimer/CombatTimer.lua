@@ -85,13 +85,10 @@ end
 local eventRegistered = {
 	SWING_DAMAGE = true,
 	SWING_EXTRA_ATTACKS = true,
-	SWING_MISSED = true,
 	RANGE_DAMAGE = true,
-	RANGE_MISSED = true,
 	SPELL_DAMAGE = true,
 	SPELL_PERIODIC_DAMAGE = true,
 	SPELL_PERIODIC_LEECH = true,
-	SPELL_MISSED = true,
 	SPELL_HEAL = true,
 	SPELL_CAST_SUCCESS = true,
 	SPELL_AURA_APPLIED = true,
@@ -134,11 +131,6 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 
 	if (isSourcePlayer and eventType == "RANGE_DAMAGE" and not FirstEvent) then
 		FirstEvent = true
-		return
-	end
-
-	-- Dodge/Parry doesn't reset ooc
-	if (eventType == "SWING_MISSED" or eventType == "SPELL_MISSED" or eventType == "RANGE_MISSED") then
 		return
 	end
 
