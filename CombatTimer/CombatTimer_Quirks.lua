@@ -119,6 +119,7 @@ CombatTimer.Quirks = {
 	[19746] = true, -- Concentration aura
 	[14325] = true, -- Hunter's Mark
 	[38067] = true, -- Guard's Mark
-	[1543] = true -- Flare
+	[1543] = true, -- Flare
+	[45334] = true --  Feral charge effect
 };
 

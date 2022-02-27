@@ -104,6 +104,7 @@ local CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo;
 local COMBATLOG_FILTER_ME = COMBATLOG_FILTER_ME;
 local COMBATLOG_FILTER_FRIENDLY_UNITS = COMBATLOG_FILTER_FRIENDLY_UNITS;
 local COMBATLOG_FILTER_MY_PET = COMBATLOG_FILTER_MY_PET;
+local COMBATLOG_FILTER_HOSTILE_PLAYERS = COMBATLOG_FILTER_HOSTILE_PLAYERS;
 local Unitids = { "target", "focus", "party1", "party2", "party3", "party4", "pet", "mouseover" }
 
 local function isInCombat(guid)
@@ -124,14 +125,20 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	local isSourcePet = CombatLog_Object_IsA(sourceFlags, COMBATLOG_FILTER_MY_PET)
 	local isSourceFriend = CombatLog_Object_IsA(sourceFlags, COMBATLOG_FILTER_FRIENDLY_UNITS)
 	local isDestFriend = CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_FRIENDLY_UNITS)
+	local isDestEnemy = CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_HOSTILE_PLAYERS)
 
 	-- return if event dest or source is not player.
 	if (not isDestPlayer and not isSourcePlayer and not isSourcePet) then
 		return
 	end
 
-	if (isSourcePlayer and ((eventType == "RANGE_DAMAGE" or eventType == "RANGE_MISSED") and not FirstEvent)) then
+	if (isSourcePlayer and eventType == "RANGE_DAMAGE" and not FirstEvent) then
 		FirstEvent = true
+		return
+	end
+
+	-- Dodge/Parry doesn't reset ooc
+	if (eventType == "SWING_MISSED" or eventType == "SPELL_MISSED" or eventType == "RANGE_MISSED") then
 		return
 	end
 
@@ -142,11 +149,11 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		return
         end
 
-	--return if player heals or dispels out of combat friendly target
+	--return if player heals or dispels out of combat friendly target. Holy Nova doesn't keep combat when it heals a friendly (intended?)
 	if (eventType == "SPELL_HEAL" or
 		eventType == "SPELL_AURA_APPLIED" or
 		eventType == "SPELL_CAST_SUCCESS") then
-		if (isSourcePlayer and isDestFriend and not isInCombat(destGUID)) then
+		if (isSourcePlayer and isDestFriend and (not isInCombat(destGUID) or spellID == 23455 or spellID == 15237)) then
 			return
 		end
 	end
@@ -163,8 +170,8 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		return
 	end
 
-	if (eventType == "SPELL_CAST_SUCCESS") then
-		if (not isDestPlayer and isSourcePlayer) then
+	if eventType == "SPELL_CAST_SUCCESS" then
+		if (isSourcePlayer and not isDestEnemy and destGUID == "" ) then
 			return
 		end 
 	end
