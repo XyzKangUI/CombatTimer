@@ -103,6 +103,7 @@ local COMBATLOG_FILTER_FRIENDLY_UNITS = COMBATLOG_FILTER_FRIENDLY_UNITS;
 local COMBATLOG_FILTER_MY_PET = COMBATLOG_FILTER_MY_PET;
 local COMBATLOG_FILTER_HOSTILE_PLAYERS = COMBATLOG_FILTER_HOSTILE_PLAYERS;
 local Unitids = { "target", "focus", "party1", "party2", "party3", "party4", "pet", "mouseover" }
+local inLockdown = InCombatLockdown()
 
 local function isInCombat(guid)
 	for _, unit in ipairs(Unitids) do
@@ -136,8 +137,10 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	end
 
 	if (isSourcePlayer and eventType == "RANGE_DAMAGE" and not FirstEvent) then
-		FirstEvent = true
-		return
+		if inLockdown == "true" then
+			FirstEvent = true
+			return
+		end
 	end
 
         if (eventType == "SPELL_PERIODIC_ENERGIZE" or eventType == "SPELL_ENERGIZE") then
