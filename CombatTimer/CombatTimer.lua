@@ -93,8 +93,8 @@ local eventRegistered = {
 	SPELL_CAST_SUCCESS = true,
 	SPELL_AURA_APPLIED = true,
 	SPELL_PERIODIC_ENERGIZE = true,
-	SPELL_ENERGIZE = true
---	SPELL_AURA_REMOVED = true
+	SPELL_ENERGIZE = true,
+	SPELL_AURA_REMOVED = true
 }
 
 local CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo;
@@ -123,6 +123,12 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	local isSourceFriend = CombatLog_Object_IsA(sourceFlags, COMBATLOG_FILTER_FRIENDLY_UNITS)
 	local isDestFriend = CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_FRIENDLY_UNITS)
 	local isDestEnemy = CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_HOSTILE_PLAYERS)
+	local isSourceEnemy = CombatLog_Object_IsA(sourceFlags, COMBATLOG_FILTER_HOSTILE_PLAYERS)
+
+	-- Mass dispel returns an empty string as destGUID. This is a bad fix, because it will reset timer even when mass dispel does not keep you in combat. Although, when you drop combat the timer stops anyway.
+	if (spellID == 32375 and (isSourcePlayer or isSourceEnemy)) then
+		self:ResetTimer()
+	end
 
 	-- return if event dest or source is not player.
 	if (not isDestPlayer and not isSourcePlayer and not isSourcePet) then
@@ -142,13 +148,13 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
         end
 
 	--return if player heals or dispels out of combat friendly target. Holy Nova doesn't keep combat when it heals a friendly (intended?)
-	if (eventType == "SPELL_HEAL" or
+	 if (eventType == "SPELL_HEAL" or
 		eventType == "SPELL_AURA_APPLIED" or
 		eventType == "SPELL_CAST_SUCCESS") then
 		if (isSourcePlayer and isDestFriend and (not isInCombat(destGUID) or spellID == 23455 or spellID == 15237)) then
 			return
 		end
-	end
+	 end
 
 	--return if player only gets healed, dispelled or buffed by someone/self
 	if ((eventType == "SPELL_HEAL" or
@@ -163,7 +169,7 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	end
 
 	if eventType == "SPELL_CAST_SUCCESS" then
-		if (isSourcePlayer and not isDestEnemy and destGUID == "" ) then
+		if (isSourcePlayer and not isDestEnemy) then
 			return
 		end 
 	end
