@@ -9,9 +9,10 @@ Configure via Interface->Addons->CombatTimer.
 
 - Works best for Rogues and Mana classes. The timer will have to sync first, therefore spend some mana/energy to get an accurate timer. 
 - The addon does not support 'RAGE' powertype classes. 
-- If you have frequently used abilities that are causing problems, I suggest you look at the CombatTimer_Quirks.lua file and add your spell to the whitelist.
+- If you have frequently used abilities that are causing problems, then I'd suggest you to look at the CombatTimer_Quirks.lua file and add your spell(s) to the whitelist.
 - Works best with max rank spells at level 70.
 - Frost trap effect keeps you combat while you stand on top of it. Haven't tested what the addon does, probably doesn't function well in that scenario.
+- Mass Dispel will always reset the ooc timer, eventhough the reset will not always be warranted. This is caused by the limitation of combat log events not showing if someone got caught in the mass dispel.
 
 # Credits:
 
