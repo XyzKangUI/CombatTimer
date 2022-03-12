@@ -93,8 +93,8 @@ local eventRegistered = {
 	SPELL_CAST_SUCCESS = true,
 	SPELL_AURA_APPLIED = true,
 	SPELL_PERIODIC_ENERGIZE = true,
-	SPELL_ENERGIZE = true,
-	SPELL_AURA_REMOVED = true
+	SPELL_ENERGIZE = true
+	--SPELL_AURA_REMOVED = true
 }
 
 local CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo;
