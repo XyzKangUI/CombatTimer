@@ -135,7 +135,6 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		return
 	end
 
-	debug(FirstEvent)
 	if eventType == "RANGE_DAMAGE" and isSourcePlayer and FirstEvent == false then
 		FirstEvent = true
 		return
@@ -231,7 +230,7 @@ function CombatTimer:ResetTimer()
 	self.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
 end
 
-function debug(...)
+function CombatTimer.debug(...)
     local val
    local text = "|cff0384fc" .. "DEBUG" .. "|r:"
     for i = 1, select("#", ...) do
