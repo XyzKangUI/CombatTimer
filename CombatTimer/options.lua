@@ -49,7 +49,7 @@ end
 
 local function slashHandler(option)
 	if option == "menu" then
-		InterfaceOptionsFrame_OpenToFrame("Combat Timer")
+		InterfaceOptionsFrame_OpenToCategory("Combat Timer")
 	elseif option == "lock" then
 		CombatTimer.db.profile.lock = not CombatTimer.db.profile.lock
 		CombatTimer:UpdateSettings()
