@@ -193,6 +193,11 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		end
 	end
 
+	-- Helfire doesn't put combat nor keeps combat
+	if (isSourcePlayer and (spellID == 5857 or spellID == 11681 or spellID == 27214 or spellID == 11684)) then 
+		return 
+	end
+
 	--return if the event is listed in our quirk table
 	if ((spellID ~= nil) and (self.Quirks[spellID])) then
 		return;
