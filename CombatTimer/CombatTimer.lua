@@ -179,9 +179,9 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		return
 	end
 
-	-- return if periodic dmg but its not a max rank channeling spell
-	if (eventType == "SPELL_PERIODIC_DAMAGE") then
-		if (spellID ~= 27220 or spellID ~= 27217 or spellID ~= 1120 or spellID ~= 25387) then
+	-- return if periodic damage is not a channeling spell
+	if eventType == "SPELL_PERIODIC_DAMAGE" then
+		if (spellID ~= nil and not self.Channeling[spellID]) or isSourcePlayer then
 			return
 		end
 	end
@@ -197,6 +197,8 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	if (isSourcePlayer and (spellID == 5857 or spellID == 11681 or spellID == 27214 or spellID == 11684)) then 
 		return 
 	end
+
+
 
 	--return if the event is listed in our quirk table
 	if ((spellID ~= nil) and (self.Quirks[spellID])) then

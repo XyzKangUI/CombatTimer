@@ -123,3 +123,31 @@ CombatTimer.Quirks = {
 	[45334] = true --  Feral charge effect
 };
 
+CombatTimer.Channeling = {
+	[689] = true, -- Drain life r1
+	[699] = true, -- Drain life r2
+	[709] = true, -- Drain life r3
+	[7651] = true, -- Drain life r4
+	[11699] = true, -- Drain life r5
+	[11700] = true, -- Drain life r6
+	[27219] = true, -- Drain life r7
+	[27220] = true, -- Drain life r8
+	[1120] = true, -- Drain soul r1
+	[8288] = true, -- Drain soul r2
+	[8289] = true, -- Drain soul r3
+	[11675] = true, -- Drain soul r4
+	[27217] = true, -- Drain soul r5
+	[15407] = true, -- Mind flay r1
+	[17311] = true, -- Mind flay r2
+	[17312] = true, -- Mind flay r3
+	[17313] = true, -- Mind flay r4
+	[17314] = true, -- Mind flay r5
+	[18807] = true, -- Mind flay r6
+	[25387] = true, -- Mind flay r7
+	[26573] = true, -- consecration r1
+	[20116] = true, -- consecration r2
+	[20922] = true, -- consecration r3
+	[20923] = true, -- consecration r4
+	[20924] = true, -- consecration r5
+	[27173] = true -- consecration r6
+};
