@@ -92,9 +92,9 @@ local eventRegistered = {
 	SPELL_HEAL = true,
 	SPELL_CAST_SUCCESS = true,
 	SPELL_AURA_APPLIED = true,
+	SPELL_AURA_REFRESH = true,
 	SPELL_PERIODIC_ENERGIZE = true,
 	SPELL_ENERGIZE = true
-	--SPELL_AURA_REMOVED = true
 }
 
 local CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo;
@@ -103,7 +103,6 @@ local COMBATLOG_FILTER_FRIENDLY_UNITS = COMBATLOG_FILTER_FRIENDLY_UNITS;
 local COMBATLOG_FILTER_MY_PET = COMBATLOG_FILTER_MY_PET;
 local COMBATLOG_FILTER_HOSTILE_PLAYERS = COMBATLOG_FILTER_HOSTILE_PLAYERS;
 local Unitids = { "target", "focus", "party1", "party2", "party3", "party4", "pet", "mouseover" }
-local inLockdown = InCombatLockdown()
 
 local function isInCombat(guid)
 	for _, unit in ipairs(Unitids) do
@@ -136,11 +135,10 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		return
 	end
 
-	if (isSourcePlayer and eventType == "RANGE_DAMAGE" and not FirstEvent) then
-		if inLockdown == "true" then
-			FirstEvent = true
-			return
-		end
+	debug(FirstEvent)
+	if eventType == "RANGE_DAMAGE" and isSourcePlayer and FirstEvent == false then
+		FirstEvent = true
+		return
 	end
 
         if (eventType == "SPELL_PERIODIC_ENERGIZE" or eventType == "SPELL_ENERGIZE") then
@@ -189,6 +187,13 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		end
 	end
 
+	-- E.g. shout spams trigger refresh eventtype
+	if eventType == "SPELL_AURA_REFRESH" then
+		if not isSourceEnemy and not isDestPlayer then
+			return
+		end
+	end
+
 	--return if the event is listed in our quirk table
 	if ((spellID ~= nil) and (self.Quirks[spellID])) then
 		return;
@@ -226,7 +231,7 @@ function CombatTimer:ResetTimer()
 	self.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
 end
 
-local function debug(...)
+function debug(...)
     local val
    local text = "|cff0384fc" .. "DEBUG" .. "|r:"
     for i = 1, select("#", ...) do
@@ -303,17 +308,13 @@ function CombatTimer.onUpdate()
 	else
 		alpha = 1 / (CombatTimer.db.profile.fadeInStart - CombatTimer.db.profile.fadeInEnd) * (CombatTimer.db.profile.fadeInStart - oocTime)
 	end
-	
+		
 	CombatTimer.frame:SetAlpha(alpha)
 		
 	CombatTimer.frame.text:SetText(string.format("%.1f", oocTime >= 0 and oocTime or 0))
 
 	if FTE == true then
-		if AuraUtil.FindAuraByName(GetSpellInfo(13810), "player", "HARMFUL") then
-			CombatTimer:ResetTimer()
-		else
-			FTE = false
-		end
+		CombatTimer:ResetTimer()
 	end
 end
 
