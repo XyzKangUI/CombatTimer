@@ -128,6 +128,7 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	-- Mass dispel returns an empty string as destGUID. This is a bad fix, because it will reset timer even when mass dispel does not keep you in combat. Although, when you drop combat the timer stops anyway.
 	if (spellID == 32375 and (isSourcePlayer or isSourceEnemy)) then
 		self:ResetTimer()
+		DEFAULT_CHAT_FRAME:AddMessage("\124cff009cff[CombatTimer]\124r Mass dispel detected: timer might be inaccurate now.")
 	end
 
 	-- return if event dest or source is not player.
@@ -197,8 +198,6 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	if (isSourcePlayer and (spellID == 5857 or spellID == 11681 or spellID == 27214 or spellID == 11684)) then 
 		return 
 	end
-
-
 
 	--return if the event is listed in our quirk table
 	if ((spellID ~= nil) and (self.Quirks[spellID])) then
