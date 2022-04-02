@@ -189,7 +189,7 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 
 	-- E.g. shout spams trigger refresh eventtype
 	if eventType == "SPELL_AURA_REFRESH" then
-		if not isSourceEnemy and not isDestPlayer then
+		if not isSourceEnemy and not isDestPlayer or spellID == 3600 then
 			return
 		end
 	end
