@@ -136,6 +136,10 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		return
 	end
 
+	if isSourcePet and eventType ~= "SWING_DAMAGE" then
+		return
+	end
+
 	if eventType == "RANGE_DAMAGE" and isSourcePlayer and FirstEvent == false then
 		FirstEvent = true
 		return
@@ -173,11 +177,6 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		if (isSourcePlayer and not isDestEnemy) then
 			return
 		end 
-	end
-
-	-- return if devour magic (max rank @ LvL70)
-	if (isSourcePet or isSourceFriend) and ((spellID == 27277 or spellID == 27279) and (isDestPlayer or (isDestFriend and not isInCombat(destGUID)))) then
-		return
 	end
 
 	-- return if periodic damage is not a channeling spell
