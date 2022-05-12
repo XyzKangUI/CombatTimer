@@ -211,13 +211,11 @@ end
 
 function CombatTimer:StartTimer()
 	self:ResetTimer()
-	self.frame:RegisterEvent("UNIT_POWER_UPDATE")
 	self.frame:SetScript("OnUpdate", CombatTimer.onUpdate)
 	self.frame:Show()
 end
 
 function CombatTimer:StopTimer()
-	self.frame:UnregisterEvent("UNIT_POWER_UPDATE")
 	self.frame:SetScript("OnUpdate", nil)
 	self.frame:SetValue(0)
 	self.frame:SetAlpha(1.0)
