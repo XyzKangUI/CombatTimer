@@ -12,6 +12,7 @@ local outOfCombatTime
 local oocTime
 local UnitAffectingCombat = UnitAffectingCombat
 local UnitGUID = UnitGUID
+local m_abs = math.abs
 
 function CombatTimer:OnInitialize()
 	self.db = LibStub:GetLibrary("AceDB-3.0"):New("CombatTimerDB", self:GetDefaultConfig())
@@ -255,7 +256,7 @@ function CombatTimer.onUpdate()
 		outOfCombatTime = endTime + 5
 		oocTime = outOfCombatTime - now
 		for _,v in ipairs(expirationTime) do
-			if v >= outOfCombatTime and math.abs(outOfCombatTime - v) <= dur then
+			if v >= outOfCombatTime and m_abs(outOfCombatTime - v) <= dur then
 				outOfCombatTime = v
 				oocTime = v - now
 				break
