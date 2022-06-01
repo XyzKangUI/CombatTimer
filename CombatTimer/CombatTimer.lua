@@ -3,7 +3,6 @@ CombatTimer = LibStub("AceAddon-3.0"):NewAddon("CombatTimer", "AceConsole-3.0", 
 local instanceType
 local endTime
 local externalManaGainTimestamp = 0
-local FirstEvent
 local FTE
 local dur = 2.02
 local durations = {[1] = dur, [2] = dur*2, [3] = dur*3, [4] = dur*4, [5] = dur*5}
@@ -82,7 +81,6 @@ function CombatTimer:PLAYER_REGEN_ENABLED()
 	self:UnregisterEvent("UNIT_AURA")
 	self:UnregisterEvent("UNIT_POWER_UPDATE")
 	self:StopTimer()
-	FirstEvent = false
 end
 
 local eventRegistered = {
@@ -145,8 +143,8 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		return
 	end
 
-	if eventType == "RANGE_DAMAGE" and isSourcePlayer and FirstEvent == false then
-		FirstEvent = true
+	-- Don't reset timer on throwing
+	if (eventType == "RANGE_DAMAGE" and isSourcePlayer and (spellID == 2764 or spellID == 3018)) then
 		return
 	end
 
@@ -302,7 +300,6 @@ function CombatTimer:ZONE_CHANGED_NEW_AREA()
 	
 	instanceType = type
 	FTE = false
-	FirstEvent = false
 end
 
 function CombatTimer:UNIT_AURA()
