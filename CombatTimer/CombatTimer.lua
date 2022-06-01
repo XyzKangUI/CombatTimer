@@ -70,6 +70,7 @@ end
 function CombatTimer:PLAYER_REGEN_DISABLED()
 	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	self:RegisterEvent("UNIT_AURA")
+	self:RegisterEvent("UNIT_POWER_UPDATE")
 	self:StartTimer()
 end
 
@@ -78,6 +79,7 @@ function CombatTimer:PLAYER_REGEN_ENABLED()
 --	debug("OOC", "difference", "GetTime() - estimated outOfCombatTime:", math.abs(diff))
 	self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	self:UnregisterEvent("UNIT_AURA")
+	self:UnregisterEvent("UNIT_POWER_UPDATE")
 	self:StopTimer()
 	FirstEvent = false
 end
@@ -147,12 +149,12 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		return
 	end
 
-        if (eventType == "SPELL_PERIODIC_ENERGIZE" or eventType == "SPELL_ENERGIZE") then
+	if (eventType == "SPELL_PERIODIC_ENERGIZE" or eventType == "SPELL_ENERGIZE") then
 		if isDestPlayer then
 			externalManaGainTimestamp = GetTime()
 		end
 		return
-        end
+	end
 
 	--return if player heals or dispels out of combat friendly target. Holy Nova doesn't keep combat when it heals a friendly (intended?)
 	 if (eventType == "SPELL_HEAL" or
@@ -247,45 +249,7 @@ function CombatTimer.debug(...)
 end
 
 function CombatTimer.onUpdate()
-	local currentEnergy = UnitPower("player", 3)
-	local maxEnergy = UnitPowerMax("player", 3)
-	local currentMana = UnitPower("player", 0)
-	local type = UnitPowerType("player")
 	local now = GetTime()
-
-	if type == 3 then
-		if now - externalManaGainTimestamp < 0.02 then
-			externalManaGainTimestamp = 0
-			return
-		end
-		if (((currentEnergy == last_value + 20 or 
-			currentEnergy == last_value + 21 or 
-			currentEnergy == last_value + 40 or 
-			currentEnergy == last_value + 41) and 
-			currentEnergy ~= maxEnergy) or (now >= last_tick + dur)) then
-  	  		expirationTime[1] = now + durations[1]
-	    		expirationTime[2] = now + durations[2]
- 	   		expirationTime[3] = now + durations[3]
-	    		expirationTime[4] = now + durations[4]
-	    		expirationTime[5] = now + durations[5]
-    			last_tick = now
-		end
-	last_value = currentEnergy
-	elseif type == 0 then
-		if now - externalManaGainTimestamp < 0.02 then
-			externalManaGainTimestamp = 0
-			return
-		end
-		if (currentMana > last_value) or (now >= last_tick + dur) then
-  	  		expirationTime[1] = now + durations[1]
-	    		expirationTime[2] = now + durations[2]
- 	   		expirationTime[3] = now + durations[3]
-	    		expirationTime[4] = now + durations[4]
-	    		expirationTime[5] = now + durations[5]
-			last_tick = now
-		end
-	last_value = currentMana
-	end
 
 	if endTime and endTime <= now then
 		outOfCombatTime = endTime + 5
@@ -345,6 +309,48 @@ function CombatTimer:UNIT_AURA()
 		FTE = true
 	else
 		FTE = false
+	end
+end
+
+function CombatTimer:UNIT_POWER_UPDATE()
+	local currentEnergy = UnitPower("player", 3)
+	local maxEnergy = UnitPowerMax("player", 3)
+	local currentMana = UnitPower("player", 0)
+	local type = UnitPowerType("player")
+	local now = GetTime()
+
+	if type == 3 then
+		if now - externalManaGainTimestamp < 0.02 then
+			externalManaGainTimestamp = 0
+			return
+		end
+		if (((currentEnergy == last_value + 20 or
+				currentEnergy == last_value + 21 or
+				currentEnergy == last_value + 40 or
+				currentEnergy == last_value + 41) and
+				currentEnergy ~= maxEnergy) or (now >= last_tick + dur)) then
+			expirationTime[1] = now + durations[1]
+			expirationTime[2] = now + durations[2]
+			expirationTime[3] = now + durations[3]
+			expirationTime[4] = now + durations[4]
+			expirationTime[5] = now + durations[5]
+			last_tick = now
+		end
+		last_value = currentEnergy
+	elseif type == 0 then
+		if now - externalManaGainTimestamp < 0.02 then
+			externalManaGainTimestamp = 0
+			return
+		end
+		if (currentMana > last_value) or (now >= last_tick + dur) then
+			expirationTime[1] = now + durations[1]
+			expirationTime[2] = now + durations[2]
+			expirationTime[3] = now + durations[3]
+			expirationTime[4] = now + durations[4]
+			expirationTime[5] = now + durations[5]
+			last_tick = now
+		end
+		last_value = currentMana
 	end
 end
 
