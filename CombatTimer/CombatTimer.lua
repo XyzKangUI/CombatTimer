@@ -88,6 +88,7 @@ local eventRegistered = {
 	SWING_EXTRA_ATTACKS = true,
 	RANGE_DAMAGE = true,
 	SPELL_DAMAGE = true,
+	SWING_MISSED = true,
 	SPELL_MISSED = true,
 	RANGE_MISSED = true,
 	SPELL_PERIODIC_DAMAGE = true,
@@ -146,6 +147,12 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	-- Don't reset timer on throwing
 	if (eventType == "RANGE_DAMAGE" and isSourcePlayer and (spellID == 2764 or spellID == 3018)) then
 		return
+	end
+
+	if eventType == "SWING_MISSED" then
+		if not isSourcePlayer then
+			return
+		end
 	end
 
 	if (eventType == "SPELL_PERIODIC_ENERGIZE" or eventType == "SPELL_ENERGIZE") then
