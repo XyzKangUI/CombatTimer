@@ -165,8 +165,9 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	--return if player heals or dispels out of combat friendly target. Holy Nova doesn't keep combat when it heals a friendly (intended?)
 	 if (eventType == "SPELL_HEAL" or
 		eventType == "SPELL_AURA_APPLIED" or
-		eventType == "SPELL_CAST_SUCCESS") then
-		if (isSourcePlayer and isDestFriend and (not isInCombat(destGUID) or spellID == 23455 or spellID == 15237)) then
+		eventType == "SPELL_CAST_SUCCESS" or
+		eventType == "SPELL_AURA_REFRESH") then
+		if (isSourcePlayer and (isDestFriend and not isInCombat(destGUID)) and not (spellID == 23455 or spellID == 15237)) then
 			return
 		end
 	 end
@@ -183,7 +184,7 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		return
 	end
 
-	if eventType == "SPELL_CAST_SUCCESS" then
+	if eventType == "SPELL_CAST_SUCCESS" and not isDestFriend then
 		if (isSourcePlayer and not isDestEnemy) then
 			return
 		end 
