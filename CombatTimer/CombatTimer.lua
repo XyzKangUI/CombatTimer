@@ -140,7 +140,9 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		return
 	end
 
-	if isSourcePet and eventType ~= "SWING_DAMAGE" then
+	-- Pet attacks keep the summoner in combat, while some pet cd's do not (mind blowing logic).
+	-- The entire duration of "Seduction" the warlock does not drop combat. That means ooc is 8+ sec which will bug timer. A solution would be to reset timer on "SPELL_AURA_REMOVED" when seduction ends.
+	if (isSourcePet and spellID ~= 6358 and (not (eventType == "SWING_DAMAGE" or eventType == "SPELL_DAMAGE") or self.Pets[spellID])) then
 		return
 	end
 
@@ -167,22 +169,22 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		eventType == "SPELL_AURA_APPLIED" or
 		eventType == "SPELL_CAST_SUCCESS" or
 		eventType == "SPELL_AURA_REFRESH") then
-		if (isSourcePlayer and (isDestFriend and not isInCombat(destGUID)) and not (spellID == 23455 or spellID == 15237)) then
+		if isSourcePlayer and (self.Nova[spellID] or (isDestFriend and not isInCombat(destGUID))) then
 			return
 		end
 	 end
 
-	--return if player only gets healed, dispelled or buffed by someone/self
-	if ((eventType == "SPELL_HEAL" or
-		eventType == "SPELL_AURA_APPLIED" or
-		eventType == "SPELL_CAST_SUCCESS") and (isDestPlayer and (isSourceFriend or isSourcePlayer))) then
+	-- Healing self or enemy does not put combat
+	if eventType == "SPELL_HEAL" and (isDestPlayer or (isSourcePlayer and isDestEnemy)) then
+		return
+	end
+
+	--return if player only gets dispelled or buffed by someone/self
+	if ((eventType == "SPELL_AURA_APPLIED" or
+		eventType == "SPELL_CAST_SUCCESS" or eventType == "SPELL_AURA_REFRESH") and (isDestPlayer and (isSourceFriend or isSourcePlayer))) then
 			return
 	end
 
-	-- return on own buffs
-	if eventType == "SPELL_AURA_APPLIED" and isDestPlayer and isSourcePlayer then
-		return
-	end
 
 	if eventType == "SPELL_CAST_SUCCESS" and not isDestFriend then
 		if (isSourcePlayer and not isDestEnemy) then

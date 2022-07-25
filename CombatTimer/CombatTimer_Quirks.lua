@@ -118,9 +118,27 @@ CombatTimer.Quirks = {
 	[27151] = true, -- Shadow resist aura
 	[19746] = true, -- Concentration aura
 	[14325] = true, -- Hunter's Mark
+	[1130] = true, -- Hunter's Mark
+	[14324] = true, -- Hunter's Mark
+	[14323] = true, -- Hunter's Mark
+	[31615] = true, -- Hunter's Mark
 	[38067] = true, -- Guard's Mark
 	[1543] = true, -- Flare
-	[45334] = true --  Feral charge effect
+	[45334] = true, --  Feral charge effect
+	[29858] = true, -- Soulshatter
+	[10909] = true, -- Mind Vision
+	[45468] = true, -- Mind Vision
+	[453] = true, -- Mind Soothe
+	[10953] = true, -- Mind Soothe
+	[8192] = true, -- Mind Soothe
+	[25596] = true, -- Mind Soothe
+	[5138] = true, -- Drain Mana r1
+	[6226] = true, -- Drain Mana r2
+	[11703] = true, -- Drain Mana r3
+	[11704] = true, -- Drain Mana r4
+	[27221] = true, -- Drain Mana r5
+	[30908] = true, -- Drain Mana r6
+	[2855] = true -- Detect Magic
 };
 
 CombatTimer.Channeling = {
@@ -157,4 +175,42 @@ CombatTimer.Channeling = {
 	[10215] = true, -- Flamestrike r5
 	[10216] = true, -- Flamestrike r6
 	[27086] = true -- Flamestrike r7
+};
+
+CombatTimer.Nova = {
+	[15237] = true, -- r1
+	[15430] = true, -- r2
+	[15431] = true, -- r3
+	[27799] = true, -- r4
+	[27800] = true, -- r5
+	[27801] = true, -- r6
+	[25331] = true, -- r7
+	[23455] = true,
+	[25331] = true,
+	[23458] = true,
+	[23459] = true,
+	[27803] = true,
+	[27804] = true,
+	[27805] = true,
+	[25329] = true
+};
+
+CombatTimer.Pets = {
+	[33395] = true, -- Freeze
+	[54053] = true, -- Shadow Bite
+	[47992] = true, -- Lash of Pain
+	[47995] = true, -- Intercept
+	[47994] = true, -- Cleave
+	[3606] = true, -- Searing Totem r1
+	[6350] = true, -- Searing Totem r2
+	[6351] = true, -- Searing Totem r3
+	[6352] = true, -- Searing Totem r4
+	[10435] = true, -- Searing Totem r5
+	[10436] = true, -- Searing Totem r6
+	[25530] = true, -- Searing Totem r7
+	[8187] = true, -- Magma Totem r1
+	[10579] = true, -- Magma Totem r2
+	[10580] = true, -- Magma Totem r3
+	[10581] = true, -- Magma Totem r4
+	[25550] = true, -- Magma Totem r5
 };
