@@ -12,6 +12,9 @@ local oocTime
 local UnitAffectingCombat = UnitAffectingCombat
 local UnitGUID = UnitGUID
 local m_abs = math.abs
+local TimeSinceLastUpdate = 0
+local ONUPDATE_INTERVAL = 0.05
+local fakeTick
 
 function CombatTimer:OnInitialize()
 	self.db = LibStub:GetLibrary("AceDB-3.0"):New("CombatTimerDB", self:GetDefaultConfig())
@@ -69,6 +72,8 @@ end
 
 function CombatTimer:PLAYER_REGEN_DISABLED()
 	self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+	self:RegisterEvent("UNIT_SPELLCAST_FAILED")
 	self:RegisterEvent("UNIT_AURA")
 	self:RegisterEvent("UNIT_POWER_UPDATE")
 	self:StartTimer()
@@ -78,27 +83,28 @@ function CombatTimer:PLAYER_REGEN_ENABLED()
 --	local diff = GetTime() - outOfCombatTime
 --	debug("OOC", "difference", "GetTime() - estimated outOfCombatTime:", math.abs(diff))
 	self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	self:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+	self:UnregisterEvent("UNIT_SPELLCAST_FAILED")
 	self:UnregisterEvent("UNIT_AURA")
 	self:UnregisterEvent("UNIT_POWER_UPDATE")
 	self:StopTimer()
 end
 
 local eventRegistered = {
-	SWING_DAMAGE = true,
-	SWING_EXTRA_ATTACKS = true,
-	RANGE_DAMAGE = true,
-	SPELL_DAMAGE = true,
-	SWING_MISSED = true,
-	SPELL_MISSED = true,
-	RANGE_MISSED = true,
-	SPELL_PERIODIC_DAMAGE = true,
-	SPELL_PERIODIC_LEECH = true,
-	SPELL_HEAL = true,
-	SPELL_CAST_SUCCESS = true,
-	SPELL_AURA_APPLIED = true,
-	SPELL_AURA_REFRESH = true,
-	SPELL_PERIODIC_ENERGIZE = true,
-	SPELL_ENERGIZE = true
+	["SWING_DAMAGE"] = true,
+	["RANGE_DAMAGE"] = true,
+	["SPELL_DAMAGE"] = true,
+	["SWING_MISSED"] = true,
+	["SPELL_MISSED"] = true,
+	["RANGE_MISSED"] = true,
+	["SPELL_PERIODIC_DAMAGE"] = true,
+	["SPELL_PERIODIC_LEECH"] = true,
+	["SPELL_HEAL"] = true,
+	["SPELL_CAST_SUCCESS"] = true,
+	["SPELL_AURA_APPLIED"] = true,
+	["SPELL_AURA_REFRESH"] = true,
+	["SPELL_PERIODIC_ENERGIZE"] = true,
+	["SPELL_ENERGIZE"] = true,
 }
 
 local CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo;
@@ -106,6 +112,7 @@ local COMBATLOG_FILTER_ME = COMBATLOG_FILTER_ME;
 local COMBATLOG_FILTER_FRIENDLY_UNITS = COMBATLOG_FILTER_FRIENDLY_UNITS;
 local COMBATLOG_FILTER_MY_PET = COMBATLOG_FILTER_MY_PET;
 local COMBATLOG_FILTER_HOSTILE_PLAYERS = COMBATLOG_FILTER_HOSTILE_PLAYERS;
+local COMBATLOG_FILTER_UNKNOWN_UNITS = COMBATLOG_FILTER_UNKNOWN_UNITS;
 local Unitids = { "target", "focus", "party1", "party2", "party3", "party4", "pet", "mouseover" }
 
 local function isInCombat(guid)
@@ -128,6 +135,7 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	local isDestFriend = CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_FRIENDLY_UNITS)
 	local isDestEnemy = CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_HOSTILE_PLAYERS)
 	local isSourceEnemy = CombatLog_Object_IsA(sourceFlags, COMBATLOG_FILTER_HOSTILE_PLAYERS)
+	local isUnknown = CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_UNKNOWN_UNITS)
 
 	-- Mass dispel returns an empty string as destGUID. This is a bad fix, because it will reset timer even when mass dispel does not keep you in combat. Although, when you drop combat the timer stops anyway.
 	if (spellID == 32375 and (isSourcePlayer or isSourceEnemy)) then
@@ -140,21 +148,25 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		return
 	end
 
+	-- if DestGUID is unknown
+	if isSourcePlayer and isUnknown then
+		return
+	end
+
 	-- Pet attacks keep the summoner in combat, while some pet cd's do not (mind blowing logic).
 	-- The entire duration of "Seduction" the warlock does not drop combat. That means ooc is 8+ sec which will bug timer. A solution would be to reset timer on "SPELL_AURA_REMOVED" when seduction ends.
 	if (isSourcePet and spellID ~= 6358 and (not (eventType == "SWING_DAMAGE" or eventType == "SPELL_DAMAGE") or self.Pets[spellID])) then
 		return
 	end
 
-	-- Don't reset timer on throwing
-	if (eventType == "RANGE_DAMAGE" and isSourcePlayer and (spellID == 2764 or spellID == 3018)) then
+	-- Don't reset timer on throwing. We have another event handling the reset.
+	if ((eventType == "RANGE_DAMAGE" or eventType == "SPELL_CAST_SUCCESS") and isSourcePlayer and (spellID == 2764 or spellID == 3018)) then
 		return
 	end
 
-	if eventType == "SWING_MISSED" then
-		if not isSourcePlayer then
-			return
-		end
+	-- When you dodge/parry/resist etc an attack you drop combat
+	if eventType == "SWING_MISSED" and isDestPlayer then
+		return
 	end
 
 	if (eventType == "SPELL_PERIODIC_ENERGIZE" or eventType == "SPELL_ENERGIZE") then
@@ -185,13 +197,6 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 			return
 	end
 
-
-	if eventType == "SPELL_CAST_SUCCESS" and not isDestFriend then
-		if (isSourcePlayer and not isDestEnemy) then
-			return
-		end 
-	end
-
 	-- return if periodic damage is not a channeling spell
 	if eventType == "SPELL_PERIODIC_DAMAGE" then
 		if (spellID ~= nil and not self.Channeling[spellID]) or isSourcePlayer then
@@ -201,7 +206,7 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 
 	-- E.g. shout spams trigger refresh eventtype
 	if eventType == "SPELL_AURA_REFRESH" then
-		if not isSourceEnemy and not isDestPlayer or spellID == 3600 then
+		if ((not isSourceEnemy and not isDestPlayer) or spellID == 3600) then
 			return
 		end
 	end
@@ -246,52 +251,45 @@ function CombatTimer:ResetTimer()
 	self.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
 end
 
-function CombatTimer.debug(...)
-    local val
-   local text = "|cff0384fc" .. "DEBUG" .. "|r:"
-    for i = 1, select("#", ...) do
-        val = select(i, ...)
-        if (type(val) == 'boolean') then val = val and "true" or false end
-        text = text .. " " .. tostring(val)
-    end
-    DEFAULT_CHAT_FRAME:AddMessage(text)
-end
-
-function CombatTimer.onUpdate()
+function CombatTimer.onUpdate(self, elapsed)
 	local now = GetTime()
+	TimeSinceLastUpdate = TimeSinceLastUpdate + elapsed
 
-	if endTime and endTime <= now then
-		outOfCombatTime = endTime + 5
-		oocTime = outOfCombatTime - now
-		for _,v in ipairs(expirationTime) do
-			if v >= outOfCombatTime and m_abs(outOfCombatTime - v) <= dur then
-				outOfCombatTime = v
-				oocTime = v - now
-				break
+	if TimeSinceLastUpdate >= ONUPDATE_INTERVAL then
+		TimeSinceLastUpdate = 0
+		if endTime and (endTime <= now) then
+			outOfCombatTime = endTime + 5
+			oocTime = outOfCombatTime - now
+			for _,v in ipairs(expirationTime) do
+				if v >= outOfCombatTime and m_abs(outOfCombatTime - v) <= dur then
+					outOfCombatTime = v
+					oocTime = v - now
+					break
+				end
 			end
 		end
-	end
 
-	local passed = oocTime
-	
-	CombatTimer.frame:SetValue(passed)
-	CombatTimer.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
+		local passed = oocTime
 
-	local alpha 
-	if (oocTime > CombatTimer.db.profile.fadeInStart) then
-		alpha = 0
-	elseif (oocTime < CombatTimer.db.profile.fadeInEnd) then
-		alpha = 1
-	else
-		alpha = 1 / (CombatTimer.db.profile.fadeInStart - CombatTimer.db.profile.fadeInEnd) * (CombatTimer.db.profile.fadeInStart - oocTime)
-	end
+		CombatTimer.frame:SetValue(passed)
+		CombatTimer.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
+
+		local alpha 
+		if (oocTime > CombatTimer.db.profile.fadeInStart) then
+			alpha = 0
+		elseif (oocTime < CombatTimer.db.profile.fadeInEnd) then
+			alpha = 1
+		else
+			alpha = 1 / (CombatTimer.db.profile.fadeInStart - CombatTimer.db.profile.fadeInEnd) * (CombatTimer.db.profile.fadeInStart - oocTime)
+		end
 		
-	CombatTimer.frame:SetAlpha(alpha)
-		
-	CombatTimer.frame.text:SetText(string.format("%.1f", oocTime >= 0 and oocTime or 0))
+		CombatTimer.frame:SetAlpha(alpha)
+			
+		CombatTimer.frame.text:SetText(string.format("%.1f", oocTime >= 0 and oocTime or 0))
 
-	if FTE == true then
-		CombatTimer:ResetTimer()
+		if FTE == true then
+			CombatTimer:ResetTimer()
+		end
 	end
 end
 
@@ -320,12 +318,40 @@ function CombatTimer:UNIT_AURA()
 	end
 end
 
-function CombatTimer:UNIT_POWER_UPDATE()
+function CombatTimer:UNIT_SPELLCAST_SUCCEEDED(event, unit, _, _, spellID)
+	if unit ~= "player" then return end
+
+	-- UNIT_POWER_UPDATE event fires on spells that change the energy. We must register these as fake ticks, because all we care for is the "natural" regen that fires off every 2 seconds.
+
+	fakeTick = true
+
+	-- Testing throw on target dummies sometimes doesn't invoke "SPELL_CAST_SUCCESS" subevent.
+	if spellID == 2764 or spellID == 3018 then
+		self:ResetTimer()
+	end
+end
+
+function CombatTimer:UNIT_SPELLCAST_FAILED(event, unit)
+	if unit ~= "player" then return end
+
+	-- UNIT_POWER_UPDATE event can be forcefully triggered by this event. We don't want that
+	fakeTick = true
+end
+
+
+function CombatTimer:UNIT_POWER_UPDATE(event, unitTarget, powerType)
+	if unitTarget ~= "player" or powerType == "COMBO_POINTS" then return end
+
 	local currentEnergy = UnitPower("player", 3)
 	local maxEnergy = UnitPowerMax("player", 3)
 	local currentMana = UnitPower("player", 0)
 	local type = UnitPowerType("player")
 	local now = GetTime()
+
+	if fakeTick == true then
+		fakeTick = false
+		return
+	end
 
 	if type == 3 then
 		if now - externalManaGainTimestamp < 0.02 then
