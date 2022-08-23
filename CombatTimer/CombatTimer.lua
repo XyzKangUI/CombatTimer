@@ -73,7 +73,7 @@ function CombatTimer:TestMode()
 	
 	self.frame:Show()
 	self.frame.text:SetText("TEST")
-	self.frame:SetValue(7)
+	self.frame:SetValue(6)
 	self.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
 	self.frame:SetStatusBarTexture(self.media:Fetch(self.media.MediaType.STATUSBAR, self.db.profile.texture))
 end
@@ -90,7 +90,7 @@ end
 function CombatTimer:PLAYER_REGEN_ENABLED()
 --	local diff = GetTime() - outOfCombatTime
 --	debug("OOC", "difference", "GetTime() - estimated outOfCombatTime:", math.abs(diff))
-	self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	--self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	self:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 	self:UnregisterEvent("UNIT_SPELLCAST_FAILED")
 	self:UnregisterEvent("UNIT_AURA")
@@ -101,6 +101,7 @@ end
 
 local eventRegistered = {
 	["SWING_DAMAGE"] = true,
+	["SPELL_EXTRA_ATTACKS"] = true,
 	["RANGE_DAMAGE"] = true,
 	["SPELL_DAMAGE"] = true,
 	["SWING_MISSED"] = true,
@@ -134,9 +135,19 @@ local function isInCombat(guid)
 	return false
 end
 
+function CombatTimer.debug(...)
+    local val
+   local text = "|cff0384fc" .. "DEBUG" .. "|r:"
+    for i = 1, select("#", ...) do
+        val = select(i, ...)
+        if (type(val) == 'boolean') then val = val and "true" or false end
+        text = text .. " " .. tostring(val)
+    end
+    DEFAULT_CHAT_FRAME:AddMessage(text)
+end
+
 function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	local _, eventType, _, sourceGUID, _, sourceFlags, _, destGUID, _, destFlags, _, spellID = CombatLogGetCurrentEventInfo()
-	local _, _, class = UnitClass("player")
 
 	if not (eventRegistered[eventType]) then return end
 
@@ -148,7 +159,6 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 	local isDestEnemy = CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_HOSTILE_PLAYERS)
 	local isSourceEnemy = CombatLog_Object_IsA(sourceFlags, COMBATLOG_FILTER_HOSTILE_PLAYERS)
 	local isUnknown = CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_UNKNOWN_UNITS)
-
 
 	-- Mass dispel returns an empty string as destGUID. This is a bad fix, because it will reset timer even when mass dispel does not keep you in combat. Although, when you drop combat the timer stops anyway.
 	if (spellID == 32375 and (isSourcePlayer or isSourceEnemy)) then
@@ -166,11 +176,10 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		return
 	end
 
-	-- TODO: I'm a bit lazy atm, but have to add channeling direct damaging spells like Blizzard as an exception.
-	-- Only the cast puts you combat, not the travel time of spells after + damage taken by enemy.
-	--if eventType == "SPELL_DAMAGE" and isSourcePlayer and class ~= 4 then
-	--	return
-	--end
+	-- Only the CAST_SUCCESS affects combat, unless the spell doesn't fire it (e.g. shiv)
+	if eventType == "SPELL_DAMAGE" and isSourcePlayer and not (self.Directdamage[spellID] or self.Nova[spellID]) then
+		return
+	end
 
 	-- When you dodge/parry/resist etc an attack you drop combat
 	if eventType == "SWING_MISSED" and isDestPlayer then
@@ -203,23 +212,6 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		return
 	end
 
-	-- Explosive shot procs do not keep combat
-	if eventType == "SPELL_DAMAGE" and spellID == 53352 then
-		return
-	end
-
-	-- Mind flay is weird. The damaging ticks do not reset timer on player nor the enemy.
-	if eventType == "SPELL_DAMAGE" or eventType == "SPELL_AURA_APPLIED" then
-		if self.Weird[spellID] then
-			return
-		end
-	end
-
-	-- Penance fires off CAST_SUCCESS event on every tick and it has no sourceGUID. Good thing we can rely on other eventtypes.
-	if eventType == "SPELL_CAST_SUCCESS" and (spellID == 47750 or spellID == 52983 or spellID == 52984 or spellID == 52985) then
-		return
-	end
-
 	--return if player heals or dispels out of combat friendly target. Holy Nova doesn't keep combat when it heals a friendly (intended?)
 	 if (eventType == "SPELL_HEAL" or
 		eventType == "SPELL_AURA_APPLIED" or
@@ -248,11 +240,6 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 		end
 	end
 
-	-- return on anything Death&Decay / Immolation Aura related for player. It never puts the player in combat.
-	if isSourcePlayer and (spellID == 49938 or spellID == 49937 or spellID == 49936 or spellID == 52212 or spellID == 50590 or spellID == 50589) then
-		return
-	end
-
 	-- E.g. shout spams trigger refresh eventtype
 	if eventType == "SPELL_AURA_REFRESH" then
 		if not isSourceEnemy and not isDestPlayer or ((spellID ~= nil) and self.Refreshes[spellID]) then
@@ -262,6 +249,11 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 
 	-- Locks always have to be exceptional
 	if ((eventType == "SPELL_PERIODIC_LEECH" or eventType == "SPELL_AURA_APPLIED") and spellID == 5138) then
+		return
+	end
+
+	-- Feral charge (bear) affects only source's combat state.
+	if isDestPlayer and spellID == 16979 then
 		return
 	end
 
@@ -320,16 +312,18 @@ function CombatTimer.onUpdate()
 	CombatTimer.frame:SetValue(passed)
 	CombatTimer.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
 
-	local alpha 
-	if (oocTime > CombatTimer.db.profile.fadeInStart) then
-		alpha = 0
-	elseif (oocTime < CombatTimer.db.profile.fadeInEnd) then
-		alpha = 1
-	else
-		alpha = 1 / (CombatTimer.db.profile.fadeInStart - CombatTimer.db.profile.fadeInEnd) * (CombatTimer.db.profile.fadeInStart - oocTime)
-	end
+	if CombatTimer.db.profile.fadeInStart ~= CombatTimer.db.profile.fadeInEnd then
+		local alpha
+		if (oocTime > CombatTimer.db.profile.fadeInStart) then
+			alpha = 0
+		elseif (oocTime < CombatTimer.db.profile.fadeInEnd) then
+			alpha = 1
+		else
+			alpha = 1 / (CombatTimer.db.profile.fadeInStart - CombatTimer.db.profile.fadeInEnd) * (CombatTimer.db.profile.fadeInStart - oocTime)
+		end
 		
 	CombatTimer.frame:SetAlpha(alpha)
+	end
 		
 	CombatTimer.frame.text:SetText(string.format("%.1f", oocTime >= 0 and oocTime or 0))
 
@@ -356,7 +350,7 @@ function CombatTimer:ZONE_CHANGED_NEW_AREA()
 end
 
 
-function CombatTimer:UNIT_AURA()
+function CombatTimer:UNIT_AURA(event, uid)
 	if AuraUtil.FindAuraByName(GetSpellInfo(13810), "player", "HARMFUL") or AuraUtil.FindAuraByName(GetSpellInfo(50536), "player", "HARMFUL") then
 		FTE = true
 	else
@@ -467,7 +461,7 @@ function CombatTimer:CreateDisplay()
 	self.frame:SetBackdropBorderColor(0, 0, 0, 1.0)
 	self.frame:SetScript("OnDragStart", OnDragStart)
 	self.frame:SetScript("OnDragStop", OnDragStop)
-	self.frame:SetMinMaxValues(0, 7)
+	self.frame:SetMinMaxValues(0, 6)
 	self.frame:SetValue(0)
 	
 	self.frame.text = self.frame:CreateFontString(nil)
