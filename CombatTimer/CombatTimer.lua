@@ -101,7 +101,7 @@ end
 
 local eventRegistered = {
 	["SWING_DAMAGE"] = true,
-	["SPELL_EXTRA_ATTACKS"] = true,
+	--["SPELL_EXTRA_ATTACKS"] = true,
 	["RANGE_DAMAGE"] = true,
 	["SPELL_DAMAGE"] = true,
 	["SWING_MISSED"] = true,
