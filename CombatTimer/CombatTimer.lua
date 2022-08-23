@@ -90,7 +90,7 @@ end
 function CombatTimer:PLAYER_REGEN_ENABLED()
 --	local diff = GetTime() - outOfCombatTime
 --	debug("OOC", "difference", "GetTime() - estimated outOfCombatTime:", math.abs(diff))
-	--self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	self:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 	self:UnregisterEvent("UNIT_SPELLCAST_FAILED")
 	self:UnregisterEvent("UNIT_AURA")
@@ -133,17 +133,6 @@ local function isInCombat(guid)
 		end
 	end
 	return false
-end
-
-function CombatTimer.debug(...)
-    local val
-   local text = "|cff0384fc" .. "DEBUG" .. "|r:"
-    for i = 1, select("#", ...) do
-        val = select(i, ...)
-        if (type(val) == 'boolean') then val = val and "true" or false end
-        text = text .. " " .. tostring(val)
-    end
-    DEFAULT_CHAT_FRAME:AddMessage(text)
 end
 
 function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
@@ -322,7 +311,7 @@ function CombatTimer.onUpdate()
 			alpha = 1 / (CombatTimer.db.profile.fadeInStart - CombatTimer.db.profile.fadeInEnd) * (CombatTimer.db.profile.fadeInStart - oocTime)
 		end
 		
-	CombatTimer.frame:SetAlpha(alpha)
+		CombatTimer.frame:SetAlpha(alpha)
 	end
 		
 	CombatTimer.frame.text:SetText(string.format("%.1f", oocTime >= 0 and oocTime or 0))
@@ -350,7 +339,7 @@ function CombatTimer:ZONE_CHANGED_NEW_AREA()
 end
 
 
-function CombatTimer:UNIT_AURA(event, uid)
+function CombatTimer:UNIT_AURA()
 	if AuraUtil.FindAuraByName(GetSpellInfo(13810), "player", "HARMFUL") or AuraUtil.FindAuraByName(GetSpellInfo(50536), "player", "HARMFUL") then
 		FTE = true
 	else
