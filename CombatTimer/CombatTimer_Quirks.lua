@@ -397,4 +397,5 @@ CombatTimer.Directdamage = {
 	[25264] = true, -- Thunder clap r7
 	[47501] = true, -- Thunder clap r8
 	[47502] = true, -- Thunder clap r9
+	[8349] = true, -- Fire nova
 };
