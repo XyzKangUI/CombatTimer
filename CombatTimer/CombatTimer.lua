@@ -12,10 +12,9 @@ local oocTime
 local UnitAffectingCombat = UnitAffectingCombat
 local UnitGUID = UnitGUID
 local m_abs = math.abs
-local PowerTypo
-local Enum_PowerType_Energy = Enum.PowerType.Energy
-local Enum_PowerType_Mana = Enum.PowerType.Mana
 local fakeTick, startTick
+local TimeSinceLastUpdate = 0
+local ONUPDATE_INTERVAL = 0.05
 
 function CombatTimer:OnInitialize()
 	self.db = LibStub:GetLibrary("AceDB-3.0"):New("CombatTimerDB", self:GetDefaultConfig())
@@ -28,13 +27,6 @@ function CombatTimer:OnInitialize()
 	
 	self:CreateDisplay()
 	self:UpdateSettings()
-
-	local type = UnitPowerType("player")
-	if type == 3 then
-		PowerTypo = Enum.PowerType.Energy
-	elseif type == 0 then
-		PowerTypo = Enum.PowerType.Mana
-	end
 end
 
 function CombatTimer:InEnabledZone()
@@ -281,43 +273,47 @@ function CombatTimer:ResetTimer()
 	self.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
 end
 
-function CombatTimer.onUpdate()
+function CombatTimer.onUpdate(self, elapsed)
 	local now = GetTime()
+	TimeSinceLastUpdate = TimeSinceLastUpdate + elapsed
 
-	if endTime and (endTime <= now) then
-		outOfCombatTime = endTime + 5
-		oocTime = outOfCombatTime - now
-		for _,v in ipairs(expirationTime) do
-			if v >= outOfCombatTime and m_abs(outOfCombatTime - v) <= dur then
-				outOfCombatTime = v
-				oocTime = v - now
-				break
+	if TimeSinceLastUpdate >= ONUPDATE_INTERVAL then
+		TimeSinceLastUpdate = 0
+		if endTime and (endTime <= now) then
+			outOfCombatTime = endTime + 5
+			oocTime = outOfCombatTime - now
+			for _,v in ipairs(expirationTime) do
+				if v >= outOfCombatTime and m_abs(outOfCombatTime - v) <= dur then
+					outOfCombatTime = v
+					oocTime = v - now
+					break
+				end
 			end
 		end
-	end
 
-	local passed = oocTime
+		local passed = oocTime
 	
-	CombatTimer.frame:SetValue(passed)
-	CombatTimer.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
+		CombatTimer.frame:SetValue(passed)
+		CombatTimer.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
 
-	if CombatTimer.db.profile.fadeInStart ~= CombatTimer.db.profile.fadeInEnd then
-		local alpha
-		if (oocTime > CombatTimer.db.profile.fadeInStart) then
-			alpha = 0
-		elseif (oocTime < CombatTimer.db.profile.fadeInEnd) then
-			alpha = 1
-		else
-			alpha = 1 / (CombatTimer.db.profile.fadeInStart - CombatTimer.db.profile.fadeInEnd) * (CombatTimer.db.profile.fadeInStart - oocTime)
+		if CombatTimer.db.profile.fadeInStart ~= CombatTimer.db.profile.fadeInEnd then
+			local alpha
+			if (oocTime > CombatTimer.db.profile.fadeInStart) then
+				alpha = 0
+			elseif (oocTime < CombatTimer.db.profile.fadeInEnd) then
+				alpha = 1
+			else
+				alpha = 1 / (CombatTimer.db.profile.fadeInStart - CombatTimer.db.profile.fadeInEnd) * (CombatTimer.db.profile.fadeInStart - oocTime)
+			end
+		
+			CombatTimer.frame:SetAlpha(alpha)
 		end
 		
-		CombatTimer.frame:SetAlpha(alpha)
-	end
-		
-	CombatTimer.frame.text:SetText(string.format("%.1f", oocTime >= 0 and oocTime or 0))
+		CombatTimer.frame.text:SetText(string.format("%.1f", oocTime >= 0 and oocTime or 0))
 
-	if FTE == true then
-		CombatTimer:ResetTimer()
+		if FTE == true then
+			CombatTimer:ResetTimer()
+		end
 	end
 end
 
@@ -370,10 +366,12 @@ end
 function CombatTimer:UNIT_POWER_UPDATE(event, unitTarget, powerType)
 	if unitTarget ~= "player" or powerType == "COMBO_POINTS" then return end
 
-	local currentEnergy = UnitPower("player", PowerTypo)
-	local maxEnergy = UnitPowerMax("player", PowerTypo)
+	local currentEnergy = UnitPower("player")
+	local maxEnergy = UnitPowerMax("player")
 	local now = GetTime()
 	local realTick = false
+	local energyInc = currentEnergy - last_value
+	local timer = now - last_tick
 
 	if currentEnergy == maxEnergy then return end
 
@@ -382,27 +380,29 @@ function CombatTimer:UNIT_POWER_UPDATE(event, unitTarget, powerType)
 		return
 	end
 
-	if PowerTypo == Enum_PowerType_Energy or PowerTypo == Enum_PowerType_Mana then
-		if now - externalManaGainTimestamp < 0.02 then
-			externalManaGainTimestamp = 0
-			realTick = false
-		end
-		if currentEnergy > last_value then
-			startTick = true
-		end
-		if now >= last_tick + dur and startTick then
-			realTick = true
-		end
-		if realTick then
-			expirationTime[1] = now + durations[1]
-			expirationTime[2] = now + durations[2]
-			expirationTime[3] = now + durations[3]
-			expirationTime[4] = now + durations[4]
-			expirationTime[5] = now + durations[5]
-			last_tick = now
-		end
-		last_value = currentEnergy
+	if now - externalManaGainTimestamp < 0.02 then
+		externalManaGainTimestamp = 0
+		realTick = false
 	end
+
+	if (powerType == "ENERGY" and (energyInc >= 1 or energyInc <= 21)) or (powerType == "MANA" and energyInc >= 1) then
+		startTick = true
+	end
+
+	if now >= last_tick + dur and startTick then
+		realTick = true	
+	end
+
+	if realTick then
+		expirationTime[1] = now + durations[1]
+		expirationTime[2] = now + durations[2]
+		expirationTime[3] = now + durations[3]
+		expirationTime[4] = now + durations[4]
+		expirationTime[5] = now + durations[5]
+		last_tick = now
+	end
+	
+	last_value = currentEnergy
 end
 
 -- Dragging functions
