@@ -385,7 +385,7 @@ function CombatTimer:UNIT_POWER_UPDATE(event, unitTarget, powerType)
 		realTick = false
 	end
 
-	if (powerType == "ENERGY" and (energyInc >= 1 or energyInc <= 21)) or (powerType == "MANA" and energyInc >= 1) then
+	if (powerType == "ENERGY" or powerType == "MANA") and energyInc >= 1 then
 		startTick = true
 	end
 
