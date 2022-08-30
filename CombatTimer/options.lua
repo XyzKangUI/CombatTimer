@@ -50,13 +50,14 @@ end
 local function slashHandler(option)
 	if option == "menu" then
 		InterfaceOptionsFrame_OpenToCategory("Combat Timer")
+		InterfaceOptionsFrame_OpenToCategory("Combat Timer")
 	elseif option == "lock" then
 		CombatTimer.db.profile.lock = not CombatTimer.db.profile.lock
 		CombatTimer:UpdateSettings()
 	else
-		CombatTimer:Print("Revision "..tonumber(string.match(GetAddOnMetadata("CombatTimer", "Version"), "(%d+)") or 1))
-		CombatTimer:Print("/combattimer lock")
+		CombatTimer:Print("Valid commands are:")
 		CombatTimer:Print("/combattimer menu")
+		CombatTimer:Print("/combattimer lock")
 	end
 end
 
