@@ -88,6 +88,7 @@ function CombatTimer:PLAYER_REGEN_ENABLED()
     self:UnregisterEvent("UNIT_SPELLCAST_FAILED")
     self:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
     self:UnregisterEvent("UNIT_AURA")
+    self:UnregisterEvent("UNIT_POWER_UPDATE")
     self:StopTimer()
 end
 
@@ -341,7 +342,7 @@ function CombatTimer:UNIT_AURA()
     end
 end
 
-local failSpellIDs = {[5171] = true, [6774] = true}
+local failSpellIDs = {[5171] = true, [6774] = true, [48674] = true, [48673] = true, [26679] = true}
 function CombatTimer:UNIT_SPELLCAST_FAILED(event, unit, _, spellID)
     if unit ~= "player" then
         return
