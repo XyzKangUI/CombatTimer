@@ -16,7 +16,6 @@ local fakeTick
 local TimeSinceLastUpdate = 0
 local ONUPDATE_INTERVAL = 0.05
 local last_value = 999999
-local last_tick = GetTime()
 
 function CombatTimer:OnInitialize()
     self.db = LibStub:GetLibrary("AceDB-3.0"):New("CombatTimerDB", self:GetDefaultConfig())
@@ -386,7 +385,6 @@ function CombatTimer:UNIT_POWER_UPDATE(event, unitTarget, powerType)
         expirationTime[3] = now + durations[3]
         expirationTime[4] = now + durations[4]
         expirationTime[5] = now + durations[5]
-        last_tick = now
     end
     fakeTick = false
 end
