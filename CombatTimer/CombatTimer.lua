@@ -169,9 +169,9 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
         return
     end
 
-    -- Unholy Blight seems to be bugged or overpowered. Atm combat does not reset while the effect is up. Lets also add frost trap effect while at it. Might look buggy because the timer duration is ~7s and the spells exceed that time, thus timer might be showing 0 until this eventType is triggered.
+    -- Add frost trap effect. Might look buggy because the timer duration is ~7s and the spells exceed that time, thus timer might be showing 0 until this eventType is triggered.
     if eventType == "SPELL_AURA_REMOVED" then
-        if (isSourcePet and spellID == 6358) or (isDestPlayer and (spellID == 50536 or spellID == 13810)) then
+        if (isSourcePet and spellID == 6358) or (isDestPlayer and spellID == 13810) then
             self:ResetTimer()
         end
         return
@@ -334,7 +334,7 @@ function CombatTimer:ZONE_CHANGED_NEW_AREA()
 end
 
 function CombatTimer:UNIT_AURA()
-    if AuraUtil.FindAuraByName(GetSpellInfo(13810), "player", "HARMFUL") or AuraUtil.FindAuraByName(GetSpellInfo(50536), "player", "HARMFUL") then
+    if AuraUtil.FindAuraByName(GetSpellInfo(13810), "player", "HARMFUL") then
         FTE = true
     else
         FTE = false
