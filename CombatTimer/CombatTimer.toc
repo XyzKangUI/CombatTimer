@@ -1,4 +1,4 @@
-## Interface: 30400
+## Interface: 30402
 ## Title: CombatTimer
 ## Notes: Displays a timer which shows the time until you leave the PvP combat if you don't participate in it
 ## OptionalDeps: Ace3, LibSharedMedia-3.0

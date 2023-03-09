@@ -12,9 +12,7 @@ local oocTime
 local UnitAffectingCombat = UnitAffectingCombat
 local UnitGUID = UnitGUID
 local m_abs = math.abs
-local fakeTick
-local TimeSinceLastUpdate = 0
-local ONUPDATE_INTERVAL = 0.05
+local fakeTick = false
 local last_value = 999999
 
 function CombatTimer:OnInitialize()
@@ -108,6 +106,8 @@ local eventRegistered = {
     ["SPELL_PERIODIC_ENERGIZE"] = true,
     ["SPELL_ENERGIZE"] = true,
     ["SPELL_AURA_REMOVED"] = true,
+    ["SPELL_DISPEL"] = true,
+    ["SPELL_DISPEL_FAILED"] = true,
 }
 
 local CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo;
@@ -143,10 +143,8 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
     local isSourceEnemy = CombatLog_Object_IsA(sourceFlags, COMBATLOG_FILTER_HOSTILE_PLAYERS)
     local isUnknown = CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_UNKNOWN_UNITS)
 
-    -- Mass dispel returns an empty string as destGUID. This is a bad fix, because it will reset timer even when mass dispel does not keep you in combat. Although, when you drop combat the timer stops anyway.
-    if (spellID == 32375 and (isSourcePlayer or isSourceEnemy)) then
-        self:ResetTimer()
-        DEFAULT_CHAT_FRAME:AddMessage("\124cff009cff[CombatTimer]\124r Mass dispel detected: timer might be inaccurate now.")
+    if (eventType == "SPELL_DISPEL_FAILED" or eventType == "SPELL_DISPEL") and not ((isSourcePlayer and isDestEnemy) or (isSourceEnemy and isDestPlayer)) then
+        return
     end
 
     -- return if event dest or source is not player.
@@ -272,47 +270,43 @@ function CombatTimer:ResetTimer()
     self.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
 end
 
-function CombatTimer.onUpdate(self, elapsed)
+function CombatTimer.onUpdate(self)
     local now = GetTime()
-    TimeSinceLastUpdate = TimeSinceLastUpdate + elapsed
 
-    if TimeSinceLastUpdate >= ONUPDATE_INTERVAL then
-        TimeSinceLastUpdate = 0
-        if endTime and (endTime <= now) then
-            outOfCombatTime = endTime + 5
-            oocTime = outOfCombatTime - now
-            for _, v in ipairs(expirationTime) do
-                if v >= outOfCombatTime and m_abs(outOfCombatTime - v) <= dur then
-                    outOfCombatTime = v
-                    oocTime = v - now
-                    break
-                end
+    if endTime and (endTime <= now) then
+        outOfCombatTime = endTime + 5
+        oocTime = outOfCombatTime - now
+        for _, v in ipairs(expirationTime) do
+            if v >= outOfCombatTime and m_abs(outOfCombatTime - v) <= dur then
+                outOfCombatTime = v
+                oocTime = v - now
+                break
             end
         end
+    end
 
-        local passed = oocTime
+    local passed = oocTime
 
-        CombatTimer.frame:SetValue(passed)
-        CombatTimer.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
+    CombatTimer.frame:SetValue(passed)
+    CombatTimer.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
 
-        if CombatTimer.db.profile.fadeInStart ~= CombatTimer.db.profile.fadeInEnd then
-            local alpha
-            if (oocTime > CombatTimer.db.profile.fadeInStart) then
-                alpha = 0
-            elseif (oocTime < CombatTimer.db.profile.fadeInEnd) then
-                alpha = 1
-            else
-                alpha = 1 / (CombatTimer.db.profile.fadeInStart - CombatTimer.db.profile.fadeInEnd) * (CombatTimer.db.profile.fadeInStart - oocTime)
-            end
-
-            CombatTimer.frame:SetAlpha(alpha)
+    if CombatTimer.db.profile.fadeInStart ~= CombatTimer.db.profile.fadeInEnd then
+        local alpha
+        if (oocTime > CombatTimer.db.profile.fadeInStart) then
+            alpha = 0
+        elseif (oocTime < CombatTimer.db.profile.fadeInEnd) then
+            alpha = 1
+        else
+            alpha = 1 / (CombatTimer.db.profile.fadeInStart - CombatTimer.db.profile.fadeInEnd) * (CombatTimer.db.profile.fadeInStart - oocTime)
         end
 
-        CombatTimer.frame.text:SetText(string.format("%.1f", oocTime >= 0 and oocTime or 0))
+        CombatTimer.frame:SetAlpha(alpha)
+    end
 
-        if FTE == true then
-            CombatTimer:ResetTimer()
-        end
+    CombatTimer.frame.text:SetText(string.format("%.1f", oocTime >= 0 and oocTime or 0))
+
+    if FTE == true then
+        CombatTimer:ResetTimer()
     end
 end
 
@@ -341,7 +335,7 @@ function CombatTimer:UNIT_AURA()
     end
 end
 
-local failSpellIDs = {[5171] = true, [6774] = true, [48674] = true, [48673] = true, [26679] = true}
+local failSpellIDs = { [5171] = true, [6774] = true, [48674] = true, [48673] = true, [26679] = true }
 function CombatTimer:UNIT_SPELLCAST_FAILED(event, unit, _, spellID)
     if unit ~= "player" then
         return
@@ -372,6 +366,11 @@ function CombatTimer:UNIT_POWER_UPDATE(event, unitTarget, powerType)
     local maxEnergy = UnitPowerMax("player")
     local now = GetTime()
     local energyInc = currentEnergy - last_value
+
+    if ((now - externalManaGainTimestamp) <= 0.02) then
+        externalManaGainTimestamp = 0
+        return
+    end
 
     --print("now:", now, "lastValue:", last_value, " - current:", currentEnergy, " - energyInc:", energyInc)
     last_value = currentEnergy
