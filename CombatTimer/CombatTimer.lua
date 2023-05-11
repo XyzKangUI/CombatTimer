@@ -108,6 +108,7 @@ local eventRegistered = {
     ["SPELL_AURA_REMOVED"] = true,
     ["SPELL_DISPEL"] = true,
     ["SPELL_DISPEL_FAILED"] = true,
+    ["DAMAGE_SPLIT"] = true,
 }
 
 local CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo;
@@ -235,6 +236,10 @@ function CombatTimer:COMBAT_LOG_EVENT_UNFILTERED()
 
     -- Feral charge (bear) affects only source's combat state.
     if isDestPlayer and spellID == 16979 then
+        return
+    end
+
+    if eventType == "DAMAGE_SPLIT" and not isDestPlayer then
         return
     end
 
