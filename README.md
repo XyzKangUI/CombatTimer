@@ -7,8 +7,7 @@ Configurable via Interface->Addons->CombatTimer or /combattimer menu
 
 # Notes:
 
-- This addon works best with energy (e.g. rogue) and mana using classes. Every time you enter combat the timer will start. This initial timer will not be the most accurate, because it has to sync first through spending mana/energy. The reason behind this is that ticks stop when you are at max energy, which means that ticks cannot be accurately tracked until a first tick happends.
-- The addon does not support Rage/Runic/Focus using classes (i.e. warrior, bear form druid)
+- The initial timer will not be the most accurate, because it has to sync first through spending mana/energy or leaving combat (rage/runic power).
 - If you have frequently used abilities that are causing problems, then add your spell(s) to the whitelist in the CombatTimer_Quirks.lua file. Also do not hestitate to open a ticket under "issues".
 
 # Inaccuracies:
