@@ -13,16 +13,20 @@ local UnitAffectingCombat = UnitAffectingCombat
 local UnitGUID = UnitGUID
 local m_abs = math.abs
 local fakeTick = false
-local last_value = 999999
+local last_value = 0
+local last_tick, startTick = 0, false
 
 function CombatTimer:OnInitialize()
     self.db = LibStub:GetLibrary("AceDB-3.0"):New("CombatTimerDB", self:GetDefaultConfig())
     self.media = LibStub:GetLibrary("LibSharedMedia-3.0")
     self:SetupOptions()
 
-    --monitor for zone change
-    self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA")
+    self:RegisterEvent("PLAYER_ENTERING_WORLD")
+    self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    self:RegisterEvent("UNIT_SPELLCAST_FAILED")
+    self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    self:RegisterEvent("UNIT_AURA")
+    self:RegisterEvent("UNIT_POWER_UPDATE")
 
     self:CreateDisplay()
     self:UpdateSettings()
@@ -44,9 +48,11 @@ end
 
 function CombatTimer:OnDisable()
     self:UnregisterAllEvents()
+    if self.frame:GetScript("OnUpdate") then
+        self.frame:SetScript("OnUpdate", nil)
+    end
 
-    self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA")
+    self:RegisterEvent("PLAYER_ENTERING_WORLD")
     self.frame:Hide()
 end
 
@@ -70,22 +76,16 @@ function CombatTimer:TestMode()
 end
 
 function CombatTimer:PLAYER_REGEN_DISABLED()
-    self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-    self:RegisterEvent("UNIT_SPELLCAST_FAILED")
-    self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
-    self:RegisterEvent("UNIT_AURA")
-    self:RegisterEvent("UNIT_POWER_UPDATE")
     self:StartTimer()
 end
 
 function CombatTimer:PLAYER_REGEN_ENABLED()
     --local diff = GetTime() - outOfCombatTime
     --print("OOC", "difference", "GetTime() - estimated outOfCombatTime:", math.abs(diff))
-    self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-    self:UnregisterEvent("UNIT_SPELLCAST_FAILED")
-    self:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
-    self:UnregisterEvent("UNIT_AURA")
-    self:UnregisterEvent("UNIT_POWER_UPDATE")
+    last_tick = GetTime()
+    if UnitPower("player") == 0 then
+        startTick = true
+    end
     self:StopTimer()
 end
 
@@ -254,16 +254,16 @@ end
 
 function CombatTimer:StartTimer()
     self:ResetTimer()
-    self.frame:SetScript("OnUpdate", CombatTimer.onUpdate)
+    if not self.frame:GetScript("OnUpdate") then
+        self.frame:SetScript("OnUpdate", CombatTimer.onUpdate)
+    end
     self.frame:Show()
 end
 
 function CombatTimer:StopTimer()
-    self.frame:SetScript("OnUpdate", nil)
+    --self.frame:SetScript("OnUpdate", nil)
     self.frame:SetValue(0)
     self.frame:SetAlpha(1.0)
-
-    self.frame.text:SetText("ooc")
 
     if (self.db.profile.hideTimer and self.db.profile.lock) then
         self.frame:Hide()
@@ -275,8 +275,22 @@ function CombatTimer:ResetTimer()
     self.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
 end
 
-function CombatTimer.onUpdate(self)
+function CombatTimer.onUpdate(self, elapsed)
     local now = GetTime()
+
+    last_tick = last_tick + elapsed
+
+    if last_tick >= 2.02 and startTick then
+        last_tick = 0
+        if fakeTick then
+            fakeTick = false
+        end
+        expirationTime[1] = now + durations[1]
+        expirationTime[2] = now + durations[2]
+        expirationTime[3] = now + durations[3]
+        expirationTime[4] = now + durations[4]
+        expirationTime[5] = now + durations[5]
+    end
 
     if endTime and (endTime <= now) then
         outOfCombatTime = endTime + 5
@@ -292,10 +306,7 @@ function CombatTimer.onUpdate(self)
 
     local passed = oocTime
 
-    CombatTimer.frame:SetValue(passed)
-    CombatTimer.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
-
-    if CombatTimer.db.profile.fadeInStart ~= CombatTimer.db.profile.fadeInEnd then
+    if CombatTimer.db.profile.fadeInStart ~= CombatTimer.db.profile.fadeInEnd and InCombatLockdown() then
         local alpha
         if (oocTime > CombatTimer.db.profile.fadeInStart) then
             alpha = 0
@@ -308,7 +319,14 @@ function CombatTimer.onUpdate(self)
         CombatTimer.frame:SetAlpha(alpha)
     end
 
-    CombatTimer.frame.text:SetText(string.format("%.1f", oocTime >= 0 and oocTime or 0))
+    if InCombatLockdown() then
+        CombatTimer.frame:SetValue(passed)
+        CombatTimer.frame:SetStatusBarColor(CombatTimer.db.profile.visual.r, CombatTimer.db.profile.visual.g, CombatTimer.db.profile.visual.b, CombatTimer.db.profile.visual.a)
+        CombatTimer.frame.text:SetText(string.format("%.1f", oocTime >= 0 and oocTime or 0))
+    else
+        CombatTimer.frame.text:SetText("ooc")
+        CombatTimer.frame:SetValue(0)
+    end
 
     if FTE == true then
         CombatTimer:ResetTimer()
@@ -316,7 +334,7 @@ function CombatTimer.onUpdate(self)
 end
 
 --see if we should enable CombatTimer in this zone
-function CombatTimer:ZONE_CHANGED_NEW_AREA()
+function CombatTimer:PLAYER_ENTERING_WORLD()
     local type = select(2, IsInInstance())
 
     if (type ~= instanceType) then
@@ -365,14 +383,16 @@ function CombatTimer:UNIT_SPELLCAST_SUCCEEDED(event, unit, _, spellID)
 end
 
 function CombatTimer:UNIT_POWER_UPDATE(event, unitTarget, powerType)
-    if unitTarget ~= "player" or powerType == "COMBO_POINTS" then return end
+    if unitTarget ~= "player" or powerType == "COMBO_POINTS" then
+        return
+    end
 
     local currentEnergy = UnitPower("player")
     local maxEnergy = UnitPowerMax("player")
     local now = GetTime()
     local energyInc = currentEnergy - last_value
 
-    if ((now - externalManaGainTimestamp) <= 0.02) then
+    if ((now - externalManaGainTimestamp) <= 0.05) then
         externalManaGainTimestamp = 0
         return
     end
@@ -380,15 +400,22 @@ function CombatTimer:UNIT_POWER_UPDATE(event, unitTarget, powerType)
     --print("now:", now, "lastValue:", last_value, " - current:", currentEnergy, " - energyInc:", energyInc)
     last_value = currentEnergy
 
-    if currentEnergy == maxEnergy and energyInc ~= 20 or energyInc <= 0 then return end
+    -- For Rage/Runic Power we only want to track decay, which only starts out of combat. For other powerTypes we just ignore first fake value.
+    if ((powerType == "RAGE" or powerType == "RUNIC_POWER") and not InCombatLockdown()) and not (energyInc == -2 or energyInc == -1 or energyInc == -3) then
+        return
+    elseif ((currentEnergy == energyInc) or (currentEnergy == maxEnergy or energyInc <= 0 )) and (powerType == "MANA" or powerType == "ENERGY") then
+            return
+    end
 
-    if (powerType == "ENERGY" or powerType == "MANA") and energyInc > 0 and not fakeTick then
-        --print("tick started", timer, " inc: ", energyInc)
+    if ((powerType == "ENERGY" or powerType == "MANA") and energyInc > 0) or (powerType == "RAGE" or powerType == "RUNIC_POWER") and not fakeTick then
+       -- print("tick started", " inc: ", energyInc)
         expirationTime[1] = now + durations[1]
         expirationTime[2] = now + durations[2]
         expirationTime[3] = now + durations[3]
         expirationTime[4] = now + durations[4]
         expirationTime[5] = now + durations[5]
+        last_tick = now
+        startTick = true
     end
     fakeTick = false
 end
@@ -466,8 +493,4 @@ function CombatTimer:UpdateSettings()
     end
 
     self:SetPosition()
-end
-
-function CombatTimer:Print(msg)
-    DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99CombatTimer|r: " .. msg)
 end
